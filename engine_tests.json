@@ -1,0 +1,69 @@
+{
+    "optimizadores": [
+        {
+            "name": "LM",
+            "params": {
+                "lambda_init": 0.01,
+                "lambda_decr": 0.9,
+                "lambda_incr": 10
+            }
+        },
+        {
+            "name": "SGD",
+            "params": {
+                "lr": 0.01,
+                "momentum": 0.9
+            }
+        },
+        {
+            "name": "Adam",
+            "params": {
+                "lr": 0.01,
+                "betas":[0.9,0.999],
+                "eps": 1e-8
+            }
+        },
+        {
+            "name": "AdamW",
+            "params": {
+                "lr": 0.01,
+                "betas":[0.9,0.999],
+                "eps": 1e-8,
+                "weight_decay": 0.01,
+                "amsgrad": false
+            }
+        },
+        {
+            "name": "RMSprop",
+            "params": {
+                "lr": 0.01,
+                "alpha": 0.99,
+                "momentum": 0,
+                "centered": false,
+                "capturable": false,
+                "eps": 1e-7,
+                "weight_decay": 0.01
+            }
+        }
+    ],
+    "experimentacion": {
+        "dataset_path": ["data_sets/engineInputs.mat","data_sets/engineTargets.mat"],
+        "dataset_header": {"in":"engineInputs","out":"engineTargets"},
+        "dataset_target_col": null,
+        "dataset_map_col": null,
+        "dataset_entradas":2,
+        "dataset_salidas":2,
+        "resultados_path": "resultados/engine/",
+        "corridas": 5,
+        "epocas": 1000,
+        "tolerancia": 1e-12,
+        "fallos": 10,
+        "funcion_perdida": "SSE",
+        "tipo":"regresion",
+        "reglas_inicial":2,
+        "reglas_total":10,
+        "train_size":0.6,
+        "test_size":0.2,
+        "val_size":0.2
+    }
+}
