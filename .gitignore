@@ -1,6 +1,6 @@
 resultados/*
-data_sets/*
 *.fis
 *.yml
 __pycache__/*
 .code/*
+*.json
