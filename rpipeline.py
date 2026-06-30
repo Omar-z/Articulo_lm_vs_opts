@@ -21,6 +21,7 @@ import threading
 
 _timer_inicio = 0.0
 timer = 0.0
+dispositivo = "cpu"
 
 def timer_start():
     """Inicializa el tiempo en el que empieza a ejecutar el bloque."""
@@ -138,13 +139,13 @@ def cargar_datos(path, data_config:dict)->pd.DataFrame:
     return None
 
 def main(config:DataConfig):
-    
+    global dispositivo
     # cargar datos
     dataset_file = config.experimentos.dataset_path
     resultados_path = config.experimentos.resultados_path
     exp_corridas = config.experimentos.corridas
     
-    gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    gpu_device = torch.device(dispositivo) #("cuda" if torch.cuda.is_available() else "cpu")
     
     data_conf = {
         "header":config.experimentos.dataset_header,
@@ -422,7 +423,7 @@ if __name__ == "__main__":
         exit(1)
     
     if len(sys.argv) == 3:
-        gpu_device = sys.argv[2]
+        dispositivo = sys.argv[2]
         
     json_path = sys.argv[1]
     with open(json_path,'r') as file:
