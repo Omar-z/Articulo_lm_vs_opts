@@ -97,9 +97,9 @@ class CapaFuerzaDisparo(nn.Module):
         3 3 3 3 
         """
 
-        ALPHA = torch.exp(-0.5*membership_vals)     # (muestras, k_reglas)
+        rule_activations = torch.exp(-0.5*membership_vals)     # (muestras, k_reglas)
         #print(f"fd: {ALPHA.shape}")
-        rule_activations = ALPHA
+        #rule_activations = ALPHA
         return rule_activations                     # (muestras, k_reglas)
 
 
@@ -149,7 +149,7 @@ class CapaCenterOfSets(nn.Module):
         y = fuerza_normalizada . constantes(centros)
         """
 
-        centers_exp = self.centers.unsqueeze(0)             # (1, num_rules, n_out)
+        #centers_exp = self.centers.unsqueeze(0)             # (1, num_rules, n_out)
         #print(self.centers.shape,"@",rule_activations.shape)
         output = rule_activations @ self.centers
         return output

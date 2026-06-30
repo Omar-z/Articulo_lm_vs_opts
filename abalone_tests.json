@@ -53,7 +53,7 @@
         "dataset_map_col": null,
         "dataset_entradas":8,
         "dataset_salidas":1,
-        "resultados_path": "resultados/abalone",
+        "resultados_path": "resultados/abalone/",
         "corridas": 5,
         "epocas": 1000,
         "tolerancia": 1e-12,
