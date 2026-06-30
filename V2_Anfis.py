@@ -291,13 +291,14 @@ class ANFISND(nn.Module):
 
 
 class LevenberMaquardtOpt(Optimizador):
-    def __init__(self,model,lambda_init=0.01,lambda_decr=0.9,lambda_incr=10)->None:
+    def __init__(self,model,lambda_init=0.01,lambda_decr=0.9,lambda_incr=10, device=torch.device("cpu"))->None:
         self.model = model
         self.lambda_val = lambda_init
         self.lambda_decr = lambda_decr
         self.lambda_incr = lambda_incr
         self.lambda_max = 1e10
         self.nombre = "LM"
+        self.device = device
         
         self.params = list(model.parameters())
         self.num_params = sum(p.numel() for p in self.params)
@@ -351,14 +352,14 @@ class LevenberMaquardtOpt(Optimizador):
         
         self._set_param_vector(parametros_vec)
         
-        return jacob, curr_error
+        return jacob.to(self.device), curr_error
     
     def step(self,X,Y):
         jacobiana, error_vec = self.jacobiana(X,Y)
-        
+        #print(f"jacobiana {jacobiana.is_cuda}, error: {error_vec.is_cuda}")
         #JTJ
-        JtJ = torch.matmul(jacobiana.t(), jacobiana) 
-        diag_JtJ = torch.eye(jacobiana.shape[1])
+        JtJ = torch.matmul(jacobiana.t(), jacobiana).to(self.device) 
+        diag_JtJ = torch.eye(jacobiana.shape[1]).to(self.device)
         g = torch.matmul(jacobiana.t(), error_vec)
         
         #parametros
@@ -412,7 +413,7 @@ def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False):
     estado={
         "iter_act":0,
         "iter_total":epochs,
-        "flair": f"loss",
+        "flair": f"loss \n",
         "color": "\033[1;45;36m",
         "cursor":"\033[3;0H"
     }
@@ -420,6 +421,7 @@ def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False):
     stop_event = threading.Event()
     barra = threading.Thread(target=mostrar_barra_progreso,args=(estado,stop_event),daemon=True)
     barra.start()
+
     
     for epoch in range(epochs):
         #optimizadores de pytorch no usan parámetros en el step
@@ -435,7 +437,7 @@ def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False):
         
         estado["iter_act"]=epoch
         if isinstance(loss, torch.Tensor):
-            estado["flair"] = f"loss: {loss.item():.4f}"
+            estado["flair"] = f"loss: {loss.item():.4f}\n"
             losses.append(loss.item())  
         else:
             estado["flair"] = f"loss: {loss:.4f}"
@@ -648,7 +650,7 @@ def mostrar_barra_progreso(estado:dict, stop_event)->None:
         barra = color+"█" * curr_width + reset+"░" * (w - curr_width-1)
         sys.stdout.write(cursor+f"{frame}[{iter_act}/{iter_total}][{barra}]{porcentaje}%| {estado["flair"]} ")
         sys.stdout.flush()
-        time.sleep(0.08)
+        time.sleep(0.05)
         #if (iter_act+1) == iter_total:
     #sys.stdout.write("\033[J") 
     print("\n",flush=True)

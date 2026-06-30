@@ -241,6 +241,8 @@ def main(config:DataConfig):
                 raise ValueError(f"Optimizador '{m_nom}' no está config")
             
             opt = OPTIMIZADORES[m_nom]
+            if m_nom == "LM":
+                m.params["device"]=gpu_device
             
             if not config.experimentos.funcion_perdida in FN_LOSS:
                 raise ValueError(f"Función de perdida '{config.experimentos.funcion_perdida}' no está config")
