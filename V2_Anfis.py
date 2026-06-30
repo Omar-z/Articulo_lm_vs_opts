@@ -437,10 +437,10 @@ def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False):
         
         estado["iter_act"]=epoch
         if isinstance(loss, torch.Tensor):
-            estado["flair"] = f"loss: {loss.item():.4f}\n"
+            estado["flair"] = f"loss: {loss.item():.8f}\n"
             losses.append(loss.item())  
         else:
-            estado["flair"] = f"loss: {loss:.4f}"
+            estado["flair"] = f"loss: {loss:.8f}\n"
             losses.append(loss)
         
         if (epoch % int(epochs*.1) if epochs >100 else 10) == 0:
