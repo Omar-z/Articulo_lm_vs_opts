@@ -21,7 +21,6 @@ import threading
 
 _timer_inicio = 0.0
 timer = 0.0
-gpu_device = "cpu"
 
 def timer_start():
     """Inicializa el tiempo en el que empieza a ejecutar el bloque."""
@@ -139,12 +138,13 @@ def cargar_datos(path, data_config:dict)->pd.DataFrame:
     return None
 
 def main(config:DataConfig):
-    global gpu_device
+    
     # cargar datos
     dataset_file = config.experimentos.dataset_path
     resultados_path = config.experimentos.resultados_path
     exp_corridas = config.experimentos.corridas
     
+    gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     data_conf = {
         "header":config.experimentos.dataset_header,
@@ -259,6 +259,8 @@ def main(config:DataConfig):
                         .AddFunctionLoss(loss_fn)\
                         .Build()
                 #modelos[m_nom]= modelo
+                
+                modelo = modelo.to(gpu_device)
 
                 estado["flair"] = f"evaluando reglas | {m.nombre} | corrida: {corrida+1}/{exp_corridas}"
             
@@ -269,19 +271,19 @@ def main(config:DataConfig):
             
                 # generar los modelos y convertir a tensores
             
-                train_x = torch.from_numpy(d_train_x).to(torch.float64)
-                train_y = torch.from_numpy(d_train_y).to(torch.float64)
+                train_x = torch.from_numpy(d_train_x).to(torch.float64).to(gpu_device)
+                train_y = torch.from_numpy(d_train_y).to(torch.float64).to(gpu_device)
 
-                test_x = torch.from_numpy(d_test_x).to(torch.float64)
-                test_y = torch.from_numpy(d_test_y).to(torch.float64)
+                test_x = torch.from_numpy(d_test_x).to(torch.float64).to(gpu_device)
+                test_y = torch.from_numpy(d_test_y).to(torch.float64).to(gpu_device)
 
-                val_x = torch.from_numpy(d_val_x).to(torch.float64)
-                val_y = torch.from_numpy(d_val_y).to(torch.float64)
+                val_x = torch.from_numpy(d_val_x).to(torch.float64).to(gpu_device)
+                val_y = torch.from_numpy(d_val_y).to(torch.float64).to(gpu_device)
                 
                 if config.experimentos.tipo == "clasificacion":
-                    train_y = OneHotEncode(train_y,config.experimentos.dataset_salidas)
-                    test_y = OneHotEncode(test_y,config.experimentos.dataset_salidas)
-                    val_y = OneHotEncode(val_y,config.experimentos.dataset_salidas)
+                    train_y = OneHotEncode(train_y,config.experimentos.dataset_salidas).to(gpu_device)
+                    test_y = OneHotEncode(test_y,config.experimentos.dataset_salidas).to(gpu_device)
+                    val_y = OneHotEncode(val_y,config.experimentos.dataset_salidas).to(gpu_device)
             
                 
                 

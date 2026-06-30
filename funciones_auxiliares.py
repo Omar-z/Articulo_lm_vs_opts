@@ -14,9 +14,9 @@ def __R2__(YH,T):
     tm = T.mean()
     a = ((T-YH)**2).sum()
     b = ((T-tm)**2).sum()
-    return 1-(a.cpu().detach().numpy()/b.cpu().detach().numpy())
+    return 1-(a.cpu().detach().numpy()/(b.cpu().detach().numpy()+1e-12))
 
-def confusion_matrix(y_pred: torch.Tensor, y_true: torch.Tensor, num_classes: int,plot=True,debug=False) -> torch.Tensor:
+def confusion_matrix(y_pred: torch.Tensor, y_true: torch.Tensor, num_classes: int,plot=True,debug=False):
     pred_labels = y_pred.argmax(dim=1).long()
     y_true = y_true.argmax(dim=1).long()
     cm = torch.zeros(num_classes, num_classes, dtype=torch.int64)
