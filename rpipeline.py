@@ -143,6 +143,7 @@ def cargar_datos(path, data_config:dict)->pd.DataFrame:
 
 def main(config:DataConfig):
     global dispositivo
+    sys.stdout.write("\033[2J\033[1;0H") #borrar pantalla
     # cargar datos
     dataset_file = config.experimentos.dataset_path
     resultados_path = config.experimentos.resultados_path
@@ -321,6 +322,7 @@ def main(config:DataConfig):
             sys.stdout.write("\033[2K") #borrar linea
             sys.stdout.write("\033[2A") #dos arriba renglon
             sys.stdout.write("\033[2K") # borrar linea
+            #sys.stdout.write("\033[H\033[2J") #borrar pantalla
                 
     stop_event.set()
     barra_reglas.join()
