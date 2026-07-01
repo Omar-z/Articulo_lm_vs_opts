@@ -49,6 +49,7 @@
     "experimentacion": {
         "dataset_path": ["data_sets/engineInputs.mat","data_sets/engineTargets.mat"],
         "dataset_header": {"in":"engineInputs","out":"engineTargets"},
+        "dataset_sep":null,
         "dataset_target_col": null,
         "dataset_map_col": null,
         "dataset_entradas":2,

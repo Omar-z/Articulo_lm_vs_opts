@@ -49,6 +49,7 @@
     "experimentacion": {
         "dataset_path": "data_sets/abalone/abalone_pre.csv",
         "dataset_header": null,
+        "dataset_sep":null,
         "dataset_target_col": 8,
         "dataset_map_col": null,
         "dataset_entradas":8,

@@ -68,6 +68,7 @@ class DataOptimizador:
 class DataExperimento:
     dataset_path:str
     dataset_header:int
+    dataset_sep:int
     dataset_target_col:int
     dataset_map_col:dict
     dataset_entradas:int
@@ -134,8 +135,10 @@ def cargar_datos(path, data_config:dict)->pd.DataFrame:
         if path[-3:] == "mat":
             data_dict = loadmat(path)
             return pd.DataFrame(data_dict)
-        elif path[-4:] == "data" or path[-3:] == "csv":
+        elif path[-4:] == "data" or path[-3:] == "csv" or path[-3:]=="txt":
             return pd.read_csv(path,**data_config)
+        elif path[-3:] == "xls" or path[-4:] == "xlsx":
+            return pd.read_excel(path,**data_config)
     return None
 
 def main(config:DataConfig):
@@ -150,6 +153,8 @@ def main(config:DataConfig):
     data_conf = {
         "header":config.experimentos.dataset_header,
     }
+    if config.experimentos.dataset_sep !=None:
+        data_conf["sep"]=config.experimentos.dataset_sep
     
     #crear folders
     os.makedirs(resultados_path,exist_ok=True)
@@ -159,12 +164,12 @@ def main(config:DataConfig):
     datos = cargar_datos(dataset_file, data_conf)
     
     if config.experimentos.dataset_target_col !=None:
-        data_in = datos.drop(columns=[config.experimentos.dataset_target_col]).to_numpy()
+        data_in = datos.drop(columns=datos.columns[config.experimentos.dataset_target_col]).to_numpy()
     else:
         data_in = datos[datos.columns[:config.experimentos.dataset_entradas]].to_numpy()
         
     if config.experimentos.dataset_map_col !=None:
-        data_out = datos[config.experimentos.dataset_target_col].map(config.experimentos.dataset_map_col).to_numpy()
+        data_out = datos[datos.columns[config.experimentos.dataset_target_col]].map(config.experimentos.dataset_map_col).to_numpy()
     else:
         data_out = datos[datos.columns[
             config.experimentos.dataset_entradas:
@@ -203,7 +208,7 @@ def main(config:DataConfig):
         
     
         # generar los modelos y convertir a tensores
-    
+        
         train_y = torch.from_numpy(d_train_y).to(torch.float64)
 
     
@@ -211,8 +216,6 @@ def main(config:DataConfig):
 
         if config.experimentos.tipo == "clasificacion":
             train_y = OneHotEncode(train_y,config.experimentos.dataset_salidas)
-            #test_y = OneHotEncode(test_y,config.experimentos.dataset_salidas)
-            #val_y = OneHotEncode(val_y,config.experimentos.dataset_salidas)
 
         nombre = config.experimentos.dataset_path.split("/")[-1] if type(config.experimentos.dataset_path) !=list \
         else config.experimentos.dataset_path[0].split("/")[-1]

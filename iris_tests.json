@@ -49,6 +49,7 @@
     "experimentacion": {
         "dataset_path": "data_sets/iris/iris.data",
         "dataset_header": null,
+        "dataset_sep":null,
         "dataset_target_col": 4,
         "dataset_map_col": {
             "Iris-setosa": 0,
