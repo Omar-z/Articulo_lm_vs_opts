@@ -109,6 +109,7 @@ OPTIMIZADORES ={
     "Adam": torch.optim.Adam,
     "AdamW": torch.optim.AdamW,
     "RMSprop": torch.optim.RMSprop,
+    "AdamFactor": torch.optim.Adafactor,
     "LM": LevenberMaquardtOpt
 }
 
