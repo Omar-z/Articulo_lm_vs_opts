@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.autograd import grad
+from torch.func import functional_call, jacfwd
 import threading, itertools, time, sys
 import matplotlib.pyplot as plt
 import copy
@@ -41,13 +42,10 @@ class CapaGaussiana(nn.Module):
             #print(f"centro: {self.centro.shape}")
 
     def __ExtraerMembresias(self,datos:np.array)->None:
-        num_in = self.n_in
-        num_reglas = self.reglas
-        #print(f"[ExtraerMembresia GaussianLayer] {num_in} ,{num_reglas}")
-        for i in range(num_in):
-            for r in range(num_reglas):
-                self.centro.data[i,r]= datos[i,r,1]
-                self.sigma.data[i,r]= datos[i,r,0]
+        # datos: (num_in, num_reglas, 2) -> [...,1]=centro, [...,0]=sigma
+        # vectorizado: un solo copy_ por parámetro en vez de N*K asignaciones escalares
+        self.centro.data.copy_(torch.as_tensor(datos[..., 1], dtype=torch.float64))
+        self.sigma.data.copy_(torch.as_tensor(datos[..., 0], dtype=torch.float64))
 
     def forward(self, x):
         """
@@ -136,11 +134,8 @@ class CapaCenterOfSets(nn.Module):
             #print(f"theta: {self.centers.shape}")
 
     def __ExtraerMembresias(self,data:np.array) -> None:
-        num_out = self.n_out
-        num_reglas = self.num_rules
-        for i in range(num_out):
-            for r in range(num_reglas):
-                self.centers.data[r,i] = data[i,r,0]
+        # data: (num_out, num_reglas, 1); centers: (num_rules, n_out) -> transponer
+        self.centers.data.copy_(torch.as_tensor(data[..., 0], dtype=torch.float64).T)
 
     def forward(self, rule_activations):
         """
@@ -331,35 +326,39 @@ class LevenberMaquardtOpt(Optimizador):
     
     
     def jacobiana(self,X,Y) -> tuple[torch.Tensor,torch.Tensor]:
-        parametros_vec = self._get_param_vector()
-        out = self.model(X)
-        curr_error = self._compute_error(out,Y)
-        
-        error_size = curr_error.numel() #sum(y.numel() for y in Y)
-        jacob = torch.zeros(error_size,self.num_params,dtype=torch.float64)
-        
-        # Diferencias Finitas
-        epsilon = 1e-8
-        for i in range(self.num_params):
-            p_params = parametros_vec.clone()
-            p_params[i] += epsilon
-            self._set_param_vector(p_params)
-            
-            p_out = self.model(X)
-            p_error = self._compute_error(p_out,Y)
-            
-            jacob[:,i] = (p_error - curr_error) / epsilon
-        
-        self._set_param_vector(parametros_vec)
-        
-        return jacob.to(self.device), curr_error
+        # Jacobiano exacto del residuo r(theta) = (Y - modelo(X)) por autodiff
+        # en modo forward (jacfwd). Reemplaza el bucle de num_params forward-passes
+        # con diferencias finitas: una sola llamada vectorizada (vmap) -> GPU-friendly
+        # y sin error de epsilon. jacfwd conviene aqui porque error_size >> num_params.
+        nombres = [n for n, _ in self.model.named_parameters()]
+        formas  = [p.shape for _, p in self.model.named_parameters()]
+        numels  = [p.numel() for _, p in self.model.named_parameters()]
+
+        # theta0: mismo orden/aplanado (row-major) que _get_/_set_param_vector,
+        # asi las columnas del Jacobiano casan con el vector de parametros.
+        theta0 = self._get_param_vector().detach()
+
+        def residuo(theta):
+            p, i = {}, 0
+            for nombre, forma, n in zip(nombres, formas, numels):
+                p[nombre] = theta[i:i+n].view(forma)
+                i += n
+            out = functional_call(self.model, p, (X,))
+            return (Y - out).reshape(-1)          # error = Y_true - Y_pred
+
+        curr_error = residuo(theta0).detach()
+        jacob = jacfwd(residuo)(theta0)           # (error_size, num_params)
+
+        return jacob, curr_error
     
     def step(self,X,Y):
         jacobiana, error_vec = self.jacobiana(X,Y)
         #print(f"jacobiana {jacobiana.is_cuda}, error: {error_vec.is_cuda}")
+        # dispositivo/dtype se toman del Jacobiano (= donde viven los parametros)
+        # para que todo el paso corra en GPU sin mezclar CPU/GPU.
         #JTJ
-        JtJ = torch.matmul(jacobiana.t(), jacobiana).to(self.device) 
-        diag_JtJ = torch.eye(jacobiana.shape[1]).to(self.device)
+        JtJ = torch.matmul(jacobiana.t(), jacobiana)
+        diag_JtJ = torch.eye(jacobiana.shape[1], dtype=jacobiana.dtype, device=jacobiana.device)
         g = torch.matmul(jacobiana.t(), error_vec)
         
         #parametros
