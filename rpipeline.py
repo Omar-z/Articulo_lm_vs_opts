@@ -309,7 +309,7 @@ def main(config:DataConfig):
                     #calcular la r2
                     r,r2= PlotTraining(test_x,y_test,test_y,plot=False,debug=False)
                     estadisticas[m.nombre][regla]["r2s"].append(r2)
-                    pass
+                    
                 
                 estadisticas[m.nombre][regla]["losses"] += hist_loss
             estadisticas[m.nombre][regla]["prom_loss"]= np.average(estadisticas[m.nombre][regla]["losses"])
@@ -320,10 +320,11 @@ def main(config:DataConfig):
             else:
                 estadisticas[m.nombre][regla]["prom_r2"]= np.average(estadisticas[m.nombre][regla]["r2s"])
                 
-            sys.stdout.write("\033[2K") #borrar linea
-            sys.stdout.write("\033[2A") #dos arriba renglon
-            sys.stdout.write("\033[2K") # borrar linea
-            #sys.stdout.write("\033[H\033[2J") #borrar pantalla
+            #sys.stdout.write("\033[2K") #borrar linea
+            #sys.stdout.write("\033[2A") #dos arriba renglon
+            #sys.stdout.write("\033[2K") # borrar linea
+            sys.stdout.write("\033[2J") #borrar pantalla
+            sys.stdout.write("\033[1;1H") # mover al primer renglón, primera columna
                 
     stop_event.set()
     barra_reglas.join()
@@ -353,6 +354,7 @@ def guardar_resultados(experimento:DataExperimento, resultados:dict)->None:
             header+= f",regla_{i}"
         csv.write(header+"\n")
         for modelo in resultados:
+            if len(resultados[modelo].keys()) == 0: continue
             renglon=modelo
             regla_loss=",loss"
             regla_epocas=",epocas"
