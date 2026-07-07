@@ -328,7 +328,7 @@ class LevenberMaquardtOpt(Optimizador):
     def jacobiana(self,X,Y) -> tuple[torch.Tensor,torch.Tensor]:
         # Jacobiano exacto del residuo r(theta) = (Y - modelo(X)) por autodiff
         # en modo forward (jacfwd). Reemplaza el bucle de num_params forward-passes
-        # con diferencias finitas: una sola llamada vectorizada (vmap) -> GPU-friendly
+        # con diferencias finitas: una sola llamada vectorizada (vmap) -> GPU
         # y sin error de epsilon. jacfwd conviene aqui porque error_size >> num_params.
         nombres = [n for n, _ in self.model.named_parameters()]
         formas  = [p.shape for _, p in self.model.named_parameters()]
