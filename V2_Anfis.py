@@ -396,7 +396,7 @@ class LevenberMaquardtOpt(Optimizador):
     
 
 
-def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False):
+def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False, fn_loss_lst:dict={}) -> tuple[list[float],dict ]:
     """
     Train the neuro-fuzzy system using Levenberg-Marquardt optimization
     """
@@ -417,6 +417,11 @@ def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False):
         "cursor":"\033[3;0H"
     }
     
+    fn_metricas=fn_loss_lst
+    metricas ={}
+    for fn_name, fn in fn_metricas.items():
+        metricas[fn_name] = []
+    
     stop_event = threading.Event()
     barra = threading.Thread(target=mostrar_barra_progreso,args=(estado,stop_event),daemon=True)
     barra.start()
@@ -425,14 +430,20 @@ def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False):
     for epoch in range(epochs):
         #optimizadores de pytorch no usan parámetros en el step
         #if not (isinstance(optimizer, type) and issubclass(optimizer, LevenberMaquardtOpt)):
+        out = model(X_train)
         if(getattr(optimizer,"nombre",None) != "LM"):
             optimizer.zero_grad()
-            out = model(X_train)
+            #out = model(X_train)
             loss = fn_loss(out, y_train)
             loss.backward()
             optimizer.step()
         else: 
             loss = optimizer.step(X_train, y_train)
+        
+        
+        for fn_name, fn in fn_metricas.items():    
+            metricas[fn_name].append(fn(out, y_train).item())
+        
         
         estado["iter_act"]=epoch
         if isinstance(loss, torch.Tensor):
@@ -448,19 +459,19 @@ def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False):
         if(loss <= tolerancia):
             print(f"Se llego a la tolerancia {loss:.6f} <= {tolerancia}") if debug else ""
             stop_event.set()
-            return losses
+            return losses, metricas
         
         if(getattr(optimizer,"nombre",None) == "LM"):
             if(optimizer.lambda_val > optimizer.lambda_max):
                 print(f"[{epoch+1}] El modelo llego a las mu maximas {optimizer.lambda_val:.1E} >= {optimizer.lambda_max:.1E}({optimizer.lambda_val>=optimizer.lambda_max})") if debug else ""
                 print(f"[{epoch+1}] con un loss de {loss:.6f}") if debug else ""
                 stop_event.set()
-                return losses;
+                return losses, metricas
     
     stop_event.set()
     barra.join()
     
-    return losses
+    return losses, metricas
 
 
 def CapaCompetitiva(X)->torch.Tensor:

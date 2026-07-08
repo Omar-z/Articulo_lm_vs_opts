@@ -22,6 +22,7 @@ import threading
 _timer_inicio = 0.0
 timer = 0.0
 dispositivo = "cpu"
+graficar = False
 
 def timer_start():
     """Inicializa el tiempo en el que empieza a ejecutar el bloque."""
@@ -114,11 +115,17 @@ OPTIMIZADORES ={
 }
 
 FN_LOSS ={
-    "MSE": torch.nn.MSELoss,
-    "MAE": torch.nn.L1Loss,
+    "MSE": torch.nn.MSELoss(),
+    "RMSE": lambda output, target: torch.sqrt(torch.mean((output - target) ** 2)),
+    "MAE": torch.nn.L1Loss(),
     "SSE": lambda output, target: torch.sum((output - target) ** 2),
-    "Entropia": torch.nn.CrossEntropyLoss
+    "Entropia": torch.nn.CrossEntropyLoss()
 }
+
+#metricas por ver para todos los optimizadores
+metricas_importantes ={}
+for fn in ["RMSE","MSE","MAE","SSE"]:
+    metricas_importantes[fn] = FN_LOSS[fn]
 
 def cargar_datos(path, data_config:dict)->pd.DataFrame:
     #si los datos estan separados en input, target
@@ -240,7 +247,15 @@ def main(config:DataConfig):
                 "accuracys":[],
                 "prom_acc":0,
                 "presicions":[],
-                "prom_prec":0
+                "prom_prec":0,
+                "SSE":[],
+                "MSE":[],
+                "RMSE":[],
+                "MAE":[],
+                "prom_SSE":0,
+                "prom_MSE":0,
+                "prom_RMSE":0,
+                "prom_MAE":0
             }
             
             if not m_nom in OPTIMIZADORES:
@@ -295,9 +310,10 @@ def main(config:DataConfig):
             
                 
                 
-                hist_loss = train_nfs(modelo,train_x,train_y,
+                hist_loss,metricas = train_nfs(modelo,train_x,train_y,
                                     config.experimentos.epocas,config.experimentos.tolerancia,
-                                    debug=False)
+                                    debug=False,
+                                    fn_loss_lst=metricas_importantes)
                 
                 y_test = modelo(test_x)
                 if config.experimentos.tipo == "clasificacion":
@@ -309,11 +325,20 @@ def main(config:DataConfig):
                     #calcular la r2
                     r,r2= PlotTraining(test_x,y_test,test_y,plot=False,debug=False)
                     estadisticas[m.nombre][regla]["r2s"].append(r2)
-                    
                 
+                #SSE,MSE,RMSE,MAE
+                for metrica_nombre in metricas.keys():
+                    estadisticas[m.nombre][regla][metrica_nombre] += metricas[metrica_nombre]
+                
+                #loss elegido para el entrenamiento (en el json)
                 estadisticas[m.nombre][regla]["losses"] += hist_loss
             estadisticas[m.nombre][regla]["prom_loss"]= np.average(estadisticas[m.nombre][regla]["losses"])
             estadisticas[m.nombre][regla]["prom_epocas"] = len(estadisticas[m.nombre][regla]["losses"])//exp_corridas
+            #promedios de SEE, MSE, RMSE, MAE
+            estadisticas[m.nombre][regla]["prom_SSE"] = np.average(estadisticas[m.nombre][regla]["SSE"])
+            estadisticas[m.nombre][regla]["prom_MSE"] = np.average(estadisticas[m.nombre][regla]["MSE"])
+            estadisticas[m.nombre][regla]["prom_RMSE"] = np.average(estadisticas[m.nombre][regla]["RMSE"])
+            estadisticas[m.nombre][regla]["prom_MAE"] = np.average(estadisticas[m.nombre][regla]["MAE"])
             if config.experimentos.tipo == "clasificacion":
                 estadisticas[m.nombre][regla]["prom_prec"] = np.average(estadisticas[m.nombre][regla]["presicions"])
                 estadisticas[m.nombre][regla]["prom_acc"]= np.average(estadisticas[m.nombre][regla]["accuracys"])
@@ -330,15 +355,16 @@ def main(config:DataConfig):
     barra_reglas.join()
             
     # generar graficas y estadisticas
+    json.dump(estadisticas,open(resultados_path+"resultados.json","w+"),indent=4)
     guardar_resultados(config.experimentos,estadisticas)
-        
+    
     # guardar graficas de los resultados
     print(f"resultados guardados en -> {resultados_path}resultados.csv")
     
     return
 
 def guardar_resultados(experimento:DataExperimento, resultados:dict)->None:
-    
+    global graficar
     with open(experimento.resultados_path+"info_experimentos.txt","w+") as txt:
         txt.write(f"Los experimentos para {experimento.dataset_path} se realizaron de la forma: \n")
         txt.write(f"\t- Se Entreno y probo {experimento.corridas} veces, el resultado se promedio y eso es lo que se reporta\n")
@@ -361,21 +387,159 @@ def guardar_resultados(experimento:DataExperimento, resultados:dict)->None:
             regla_acc = ",exactitud"
             regla_prec = ",presición"
             regla_r2 = ",R2"
+            regla_sse = ",SSE"
+            regla_mse = ",MSE"
+            regla_rmse = ",RMSE"
+            regla_mae = ",MAE"
             for regla in range(experimento.reglas_inicial,experimento.reglas_total+1):
                 regla_loss += f",{resultados[modelo][regla]["prom_loss"]}"
                 regla_epocas += f",{resultados[modelo][regla]["prom_epocas"]}"
                 regla_acc += f",{resultados[modelo][regla]["prom_acc"]}"
                 regla_prec += f",{resultados[modelo][regla]["prom_prec"]}"
                 regla_r2 += f",{resultados[modelo][regla]["prom_r2"]}"
+                
+                regla_sse += f",{resultados[modelo][regla]["prom_SSE"]}"
+                regla_mse += f",{resultados[modelo][regla]["prom_MSE"]}"
+                regla_rmse += f",{resultados[modelo][regla]["prom_RMSE"]}"
+                regla_mae += f",{resultados[modelo][regla]["prom_MAE"]}"
+                
             csv.write(renglon+regla_loss+"\n")
+            csv.write(renglon+regla_sse+"\n")
+            csv.write(renglon+regla_mse+"\n")
+            csv.write(renglon+regla_rmse+"\n")
+            csv.write(renglon+regla_mae+"\n")
             csv.write(renglon+regla_epocas+"\n")
             if experimento.tipo == "clasificacion":
                 csv.write(renglon+regla_acc+"\n")
                 csv.write(renglon+regla_prec+"\n")
             else:
                 csv.write(renglon+regla_r2+"\n")
+    if graficar:
+        #folder para guardar
+        os.makedirs(experimento.resultados_path+"loss/",exist_ok=True)
+        os.makedirs(experimento.resultados_path+"metricas/",exist_ok=True)
+        os.makedirs(experimento.resultados_path+"loss_promedio/",exist_ok=True)
+        os.makedirs(experimento.resultados_path+"metricas_promedio/",exist_ok=True)
+        
+        # generar graficas de los resultados
+        for modelo in resultados:
+            if len(resultados[modelo].keys()) == 0: continue
+            reglas = list(range(experimento.reglas_inicial,experimento.reglas_total+1))
+            prom_loss = [resultados[modelo][r]["prom_loss"] for r in reglas]
+            for loss_regla in reglas:
+                generar_grafica(resultados[modelo][loss_regla]["losses"],
+                                titulo=f"Loss del {modelo} - {loss_regla} reglas",
+                                xlabel="Epocas",
+                                ylabel="Loss",
+                                path=experimento.resultados_path+"loss/"+f"{modelo}_loss_{loss_regla}.png")
+                
+                #metricas por regla
+                generar_grafica(resultados[modelo][loss_regla]["SSE"],
+                                titulo=f"SSE del {modelo} - {loss_regla} reglas",
+                                xlabel="Epocas",
+                                ylabel="Loss",
+                                path=experimento.resultados_path+"metricas/"+f"{modelo}_sse_{loss_regla}.png")
+                
+                generar_grafica(resultados[modelo][loss_regla]["MSE"],
+                                titulo=f"MSE del {modelo} - {loss_regla} reglas",
+                                xlabel="Epocas",
+                                ylabel="Loss",
+                                path=experimento.resultados_path+"metricas/"+f"{modelo}_mse_{loss_regla}.png")
+                
+                generar_grafica(resultados[modelo][loss_regla]["RMSE"],
+                                titulo=f"RMSE del {modelo} - {loss_regla} reglas",
+                                xlabel="Epocas",
+                                ylabel="Loss",
+                                path=experimento.resultados_path+"metricas/"+f"{modelo}_rmse_{loss_regla}.png")
+                
+                generar_grafica(resultados[modelo][loss_regla]["MAE"],
+                                titulo=f"MAE del {modelo} - {loss_regla} reglas",
+                                xlabel="Epocas",
+                                ylabel="Loss",
+                                path=experimento.resultados_path+"metricas/"+f"{modelo}_mae_{loss_regla}.png")
+                
+            prom_epocas = [resultados[modelo][r]["prom_epocas"] for r in reglas]
+            prom_acc = [resultados[modelo][r]["prom_acc"] for r in reglas]
+            prom_prec = [resultados[modelo][r]["prom_prec"] for r in reglas]
+            prom_r2 = [resultados[modelo][r]["prom_r2"] for r in reglas]
+            prom_sse = [resultados[modelo][r]["prom_SSE"] for r in reglas]
+            prom_mse = [resultados[modelo][r]["prom_MSE"] for r in reglas]
+            prom_rmse = [resultados[modelo][r]["prom_RMSE"] for r in reglas]
+            prom_mae = [resultados[modelo][r]["prom_MAE"] for r in reglas]
+            
+            generar_grafica((reglas,prom_loss),
+                            titulo=f"Promedio Loss por cantidad de reglas - {modelo}",
+                            xlabel="Cantidad de Reglas",
+                            ylabel="Promedio Loss",
+                            path=experimento.resultados_path+"loss_promedio/"+f"{modelo}_prom_loss.png")
+            
+            if experimento.tipo == "clasificacion":
+                generar_grafica((reglas,prom_acc),
+                                titulo=f"Promedio Exactitud por cantidad de reglas - {modelo}",
+                                xlabel="Cantidad de Reglas",
+                                ylabel="Promedio Exactitud",
+                                path=experimento.resultados_path+"metricas_promedio/"+f"{modelo}_prom_acc.png")
+                generar_grafica((reglas,prom_prec),
+                                titulo=f"Promedio Presición por cantidad de reglas - {modelo}",
+                                xlabel="Cantidad de Reglas",
+                                ylabel="Promedio Presición",
+                                path=experimento.resultados_path+"metricas_promedio/"+f"{modelo}_prom_prec.png")
+            else:
+                generar_grafica((reglas,prom_r2),
+                                titulo=f"Promedio R2 por cantidad de reglas - {modelo}",
+                                xlabel="Cantidad de Reglas",
+                                ylabel="Promedio R2",
+                                path=experimento.resultados_path+"metricas_promedio/"+f"{modelo}_prom_r2.png")
+            #metricas del error
+            stackmetricas ={
+                "SSE":prom_sse,
+                "MSE":prom_mse,
+                "RMSE":prom_rmse,
+                "MAE":prom_mae
+            }
+            stacklabel = tuple(range(experimento.reglas_inicial,experimento.reglas_total+1))
+            
+            generar_plotstack(stackmetricas,
+                            titulo=f"Promedio de metricas por cantidad de reglas - {modelo}",
+                            xlabel=stacklabel,
+                            ylabel="Promedio de metricas(escala asinh)",
+                            path=experimento.resultados_path+"metricas_promedio/"+f"{modelo}_prom_metricas.png")
 
 
+def generar_plotstack(datosbin:dict[str,list[float]], titulo:str, xlabel:tuple[str], ylabel:str, path:str)->None:
+    
+    fig,ax = plt.subplots(figsize=(10,6),layout="constrained")
+    vals = np.concatenate(list(datosbin.values()))
+    umbral = np.nanmin(np.abs(vals[vals!=0]))
+    ax.set_yscale('asinh',linear_width=umbral)
+    
+    res = ax.grouped_bar(datosbin,tick_labels=xlabel, group_spacing=1)
+    for contenedor in res.bar_containers:
+        ax.bar_label(contenedor, padding=3,label_type='edge',fmt='%.2f',fontsize=8)
+    
+    ax.legend(loc='upper left', ncols=len(datosbin.keys()))
+    plt.title(titulo)
+    plt.xlabel("Cantidad de Reglas")
+    plt.ylabel(ylabel)
+    #plt.grid()
+    plt.legend()
+    plt.savefig(path)
+    plt.close()
+    
+
+def generar_grafica(datos, titulo:str, xlabel:str, ylabel:str, path:str)->None:
+    plt.figure(figsize=(10,6))
+    if type(datos) == tuple:
+        plt.plot(*datos,label=titulo)
+    else:
+        plt.plot(datos,label=titulo)
+    plt.title(titulo)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.grid()
+    plt.legend()
+    plt.savefig(path)
+    plt.close()
 
 if __name__ == "__main__":
     help = """
@@ -432,6 +596,9 @@ if __name__ == "__main__":
     
     if len(sys.argv) == 3:
         dispositivo = sys.argv[2]
+    
+    if len(sys.argv) == 4:
+        graficar = True if sys.argv[3].lower() == "graficar" else False
         
     json_path = sys.argv[1]
     with open(json_path,'r') as file:
