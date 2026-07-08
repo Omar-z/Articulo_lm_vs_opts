@@ -517,7 +517,7 @@ def generar_plotstack(datosbin:dict[str,list[float]], titulo:str, xlabel:tuple[s
     fig,ax = plt.subplots(figsize=(10,6),layout="constrained")
     vals = np.concatenate(list(datosbin.values()))
     if np.isnan(vals).all() or np.isinf(vals).all():
-        print(f"Todos los valores son NaN para {datosbin.keys()}, no se puede generar la grafica")
+        print(f"Todos los valores son NaN para {datosbin.keys()}de "+titulo)
         return
     umbral = np.nanmin(np.abs(vals[vals!=0]))
     ax.set_yscale('asinh',linear_width=umbral)
