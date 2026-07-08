@@ -660,7 +660,9 @@ def mostrar_barra_progreso(estado:dict, stop_event)->None:
         barra = color+"█" * curr_width + reset+"░" * (w - curr_width-1)
         sys.stdout.write(cursor+f"{frame}[{iter_act}/{iter_total}][{barra}]{porcentaje}%| {estado["flair"]} ")
         sys.stdout.flush()
-        time.sleep(0.05)
+        if stop_event.wait(0.1):
+            break
+        #time.sleep(0.05)
         #if (iter_act+1) == iter_total:
     #sys.stdout.write("\033[J") 
     print("\n",flush=True)

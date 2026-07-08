@@ -5,6 +5,7 @@ con toda la configuración del experimento (optimizadores, dataset, hiperparáme
 ```bash
 python rpipeline.py iris_tests.json  # por defecto es cpu
 python rpipeline.py iris_tests.json cuda # posibles valores cpu, cuda y mps
+python rpipeline.py iris_tests.json cuda graficar # posibles graficar o nada
 ```
 
 # Configuración Experimento
