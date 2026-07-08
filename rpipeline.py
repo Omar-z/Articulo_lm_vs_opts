@@ -594,10 +594,10 @@ if __name__ == "__main__":
         print(help)
         exit(1)
     
-    if len(sys.argv) == 3:
+    if len(sys.argv) >= 3:
         dispositivo = sys.argv[2]
     
-    if len(sys.argv) == 4:
+    if len(sys.argv) >= 4:
         graficar = True if sys.argv[3].lower() == "graficar" else False
         
     json_path = sys.argv[1]
@@ -605,7 +605,6 @@ if __name__ == "__main__":
         config = json.load(file)
     
     data_config = parsear_json(config)
-    
     timer_start()
     main(data_config)
     timer_end()
