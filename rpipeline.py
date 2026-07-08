@@ -428,7 +428,8 @@ def guardar_resultados(experimento:DataExperimento, resultados:dict)->None:
             prom_loss = [resultados[modelo][r]["prom_loss"] for r in reglas]
             for loss_regla in reglas:
                 
-                if np.isnan(resultados[modelo][loss_regla]["losses"]).all():
+                if np.isnan(resultados[modelo][loss_regla]["losses"]).all() or \
+                    np.isinf(resultados[modelo][loss_regla]["losses"]).all():
                     continue
                 
                 generar_grafica(resultados[modelo][loss_regla]["losses"],
@@ -515,7 +516,7 @@ def generar_plotstack(datosbin:dict[str,list[float]], titulo:str, xlabel:tuple[s
     
     fig,ax = plt.subplots(figsize=(10,6),layout="constrained")
     vals = np.concatenate(list(datosbin.values()))
-    if np.isnan(vals).all():
+    if np.isnan(vals).all() or np.isinf(vals).all():
         print(f"Todos los valores son NaN para {datosbin.keys()}, no se puede generar la grafica")
         return
     umbral = np.nanmin(np.abs(vals[vals!=0]))

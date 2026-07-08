@@ -414,7 +414,7 @@ def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False, 
         "iter_total":epochs,
         "flair": f"loss \n",
         "color": "\033[1;45;36m",
-        "cursor":"\033[3;0H"
+        "cursor":"\033[3;1H"
     }
     
     fn_metricas=fn_loss_lst
