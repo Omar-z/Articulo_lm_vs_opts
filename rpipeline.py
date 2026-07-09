@@ -541,9 +541,9 @@ def generar_plotstack(datosbin:dict[str,list[float]], titulo:str, xlabel:tuple[s
 def generar_grafica(datos, titulo:str, xlabel:str, ylabel:str, path:str)->None:
     plt.figure(figsize=(10,6))
     if type(datos) == tuple:
-        plt.plot(*datos,label=titulo)
+        plt.plot(*datos,label=titulo,marker='o')
     else:
-        plt.plot(datos,label=titulo)
+        plt.plot(datos,label=titulo,marker='o')
     plt.title(titulo)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
