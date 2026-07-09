@@ -233,6 +233,8 @@ def main(config:DataConfig):
                                     pd.DataFrame(d_train_x),
                                     pd.DataFrame(train_y.numpy().squeeze()),
                                     regla)
+        
+        fis_nan_values_edit(fis_str)
     
         for m in config.optimizadores:
             #print(f"\033[1;45;33m\nEvaluando modelo con optimizador-> {m.nombre} y regla {regla}\033[0m")
@@ -549,6 +551,15 @@ def generar_grafica(datos, titulo:str, xlabel:str, ylabel:str, path:str)->None:
     plt.legend()
     plt.savefig(path)
     plt.close()
+
+
+def fis_nan_values_edit(fisstr:str)->None:
+    with open(fisstr, 'r') as f:
+        contenido = f.read()
+    
+    with open(fisstr, 'w') as f:
+        contenido = contenido.replace('[nan nan]', '[0.0 1.0]')
+        f.write(contenido)
 
 if __name__ == "__main__":
     help = """
