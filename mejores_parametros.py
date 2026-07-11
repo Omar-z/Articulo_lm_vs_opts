@@ -134,10 +134,9 @@ def encontrar_parametros(config: DataConfig) ->None:
                                     config.experimentos.epocas,config.experimentos.tolerancia,
                                     debug=False)
                 
-                promedio_loss = np.mean(hist_loss)
                 
-                if promedio_loss < best_loss and (np.isnan(hist_loss[-1]) == False or np.isinf(hist_loss[-1]) == False):
-                    best_loss = promedio_loss
+                if hist_loss[-1] <= best_loss and (np.isnan(hist_loss[-1]) == False or np.isinf(hist_loss[-1]) == False):
+                    best_loss = hist_loss[-1]
                     best_lr = lr
             
             if optimizador.nombre != "LM":
