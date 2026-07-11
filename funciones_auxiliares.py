@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+from dataclasses import dataclass, field
+from typing import Any
 
 def __R__(X,YH,T):
     tm = T.mean()
@@ -242,3 +244,39 @@ def RetroAlimentacionBaseReglas(estado:list[int,float,float,float],estado_veloci
         return np.random.choice(opciones)
 
     return 1
+
+#PARA PARSER JSON
+@dataclass
+class DataOptimizador:
+    nombre:str
+    params:dict[str,Any]
+    
+    def __repr__(self):
+        return f"{self.nombre}({self.params})"
+
+@dataclass
+class DataExperimento:
+    dataset_path:str
+    dataset_header:int
+    dataset_sep:int
+    dataset_target_col:int
+    dataset_map_col:dict
+    dataset_entradas:int
+    dataset_salidas:int
+    resultados_path:str
+    corridas:int
+    epocas:int
+    tolerancia:float
+    fallos:int
+    funcion_perdida: str
+    tipo:str
+    reglas_inicial:int
+    reglas_total:int
+    train_size:float
+    test_size:float
+    val_size:float
+
+@dataclass
+class DataConfig:
+    optimizadores: list[DataOptimizador] = field(default_factory=list)
+    experimentos: DataExperimento = field(default_factory=DataExperimento)

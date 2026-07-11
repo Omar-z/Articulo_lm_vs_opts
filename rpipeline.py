@@ -14,10 +14,15 @@ import os
 import sys
 import json
 import time
-from dataclasses import dataclass, field
 from typing import Any
 import threading
+from funciones_auxiliares import DataOptimizador,DataExperimento,DataConfig
 
+
+# ANFIS
+from Anfis_utils import CargarFIS,CrearFISInicial,GuardarFIS
+from V2_Anfis import RLANFISBuilder,train_nfs,LevenberMaquardtOpt,Optimizador,ANFISND, cantidad_reglas,mostrar_barra_progreso
+from funciones_auxiliares import OneHotEncode,PlotTraining, confusion_matrix
 
 _timer_inicio = 0.0
 timer = 0.0
@@ -50,47 +55,6 @@ def formato_legible(segundos):
         partes.append(f"{segs} segundo" + ("s" if segs != 1 else ""))
 
     return ", ".join(partes)
-
-# ANFIS
-from Anfis_utils import CargarFIS,CrearFISInicial,GuardarFIS
-from V2_Anfis import RLANFISBuilder,train_nfs,LevenberMaquardtOpt,Optimizador,ANFISND, cantidad_reglas,mostrar_barra_progreso
-from funciones_auxiliares import OneHotEncode,PlotTraining, confusion_matrix
-
-
-@dataclass
-class DataOptimizador:
-    nombre:str
-    params:dict[str,any]
-    
-    def __repr__(self):
-        return f"{self.nombre}({self.params})"
-
-@dataclass
-class DataExperimento:
-    dataset_path:str
-    dataset_header:int
-    dataset_sep:int
-    dataset_target_col:int
-    dataset_map_col:dict
-    dataset_entradas:int
-    dataset_salidas:int
-    resultados_path:str
-    corridas:int
-    epocas:int
-    tolerancia:float
-    fallos:int
-    funcion_perdida: str
-    tipo:str
-    reglas_inicial:int
-    reglas_total:int
-    train_size:float
-    test_size:float
-    val_size:float
-
-@dataclass
-class DataConfig:
-    optimizadores: list[DataOptimizador] = field(default_factory=list)
-    experimentos: DataExperimento = field(default_factory=DataExperimento)
 
 
 def parsear_json(jsonfile)->DataConfig:
@@ -151,8 +115,14 @@ def cargar_datos(path, data_config:dict)->pd.DataFrame:
 
 def main(config:DataConfig):
     global dispositivo
-    sys.stdout.write("\033[2J\033[1;0H") #borrar pantalla
+    global mejores_parametros
+    global mp_path
+    sys.stdout.write("\033[2J\033[1;1H") #borrar pantalla
     # cargar datos
+    
+    if mejores_parametros:
+        config.experimentos.resultados_path +="mp/"
+    
     dataset_file = config.experimentos.dataset_path
     resultados_path = config.experimentos.resultados_path
     exp_corridas = config.experimentos.corridas
@@ -167,6 +137,7 @@ def main(config:DataConfig):
     
     #crear folders
     os.makedirs(resultados_path,exist_ok=True)
+    
     
     #cargar datos
     
@@ -191,7 +162,7 @@ def main(config:DataConfig):
         "iter_total":config.experimentos.reglas_total,
         "flair": 'reglas evaluadas',
         "color": "\033[1;44;33m",
-        "cursor":"\033[1;0H"
+        "cursor":"\033[1;1H"
     }
     estadisticas={}
     for nombres in OPTIMIZADORES:
@@ -205,6 +176,13 @@ def main(config:DataConfig):
     for i in range(config.experimentos.reglas_inicial,config.experimentos.reglas_total+1):
         semilla[i] = np.random.randint(0,9999)
         
+        
+    # cargar los mejores parametros del optimizador
+    parametros={}
+    if mejores_parametros:
+        with open(mp_path,'r') as file:
+            parametros = json.load(file)
+    
     for regla in range(
         config.experimentos.reglas_inicial,
         config.experimentos.reglas_total+1):
@@ -271,6 +249,9 @@ def main(config:DataConfig):
                 raise ValueError(f"Función de perdida '{config.experimentos.funcion_perdida}' no está config")
             
             loss_fn = FN_LOSS[config.experimentos.funcion_perdida]
+            
+            if mejores_parametros:
+                m.params = parametros[m.nombre][str(regla)]
             
             # hacer n corridas y calcular el promedio por modelo
             for corrida in range(exp_corridas):
@@ -561,53 +542,18 @@ def fis_nan_values_edit(fisstr:str)->None:
         contenido = contenido.replace('[nan nan]', '[0.0 1.0]')
         f.write(contenido)
 
+
+mejores_parametros = False
+mp_path =""
+
 if __name__ == "__main__":
     help = """
         Args:
         [0] - script name
         [1] - json con la configuración de los experimentos (e.g. "iris_config.json")
-        [2] - usar dispositivo (cuda, mps, sin nada es cpu)         
-        Json config ejemplo:
-        {
-            "optimizadores": 
-            [
-                {
-                    "name": "LM",
-                    "params": {
-                        "lambda_init":0.01,
-                        "lambda_decr":0.9,
-                        "lambda_incr":10
-                    }
-                },
-                {
-                    "name": "SGD",
-                    "params": {
-                        "learning_rate": 0.01,
-                        "momentum": 0.9
-                    }
-                },
-                {
-                    "name": "Adam",
-                    "params": {
-                        "learning_rate": 0.01,
-                        "beta1": 0.9,
-                        "beta2": 0.999,
-                        "epsilon": 1e-8
-                    }
-                }
-            ],
-            "experimentacion":
-            [
-                {
-                    "dataset_path": "dataset/iris.mat",
-                    "resultados_path": "resultados/iris/",
-                    "corridas": 100,
-                    "epocas": 1000,
-                    "tolerancia": 1e-12,
-                    "fallos" : 20
-                }
-            ]        
-        }
+        [2] - usar dispositivo (cuda, mps, sin nada es cpu)
+        [3] - graficar (opcional) si se pone "graficar" se generan las graficas de los resultados         
+        
     """
     
     if len(sys.argv) < 2:
@@ -623,6 +569,18 @@ if __name__ == "__main__":
     json_path = sys.argv[1]
     with open(json_path,'r') as file:
         config = json.load(file)
+    
+    mp_path = json_path.split(".")[0]
+    mtemp = mp_path.split("/")[-1]
+    mp_path = mp_path.replace(mtemp,"")
+    
+    exp_nombre = sys.argv[1].split("/")[-1] 
+    
+    mp_path+=f"mejores_parametros_optimizadores_{exp_nombre}.json"
+    
+    if os.path.exists(mp_path):
+        mejores_parametros= True
+    
     
     data_config = parsear_json(config)
     timer_start()
