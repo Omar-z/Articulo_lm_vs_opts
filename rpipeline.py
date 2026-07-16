@@ -183,6 +183,20 @@ def main(config:DataConfig):
     if mejores_parametros:
         with open(mp_path,'r') as file:
             parametros = json.load(file)
+
+    lmparams =None 
+    for opt in config.optimizadores:
+        if opt.nombre == "LM":
+            lmparams = config.optimizadores[0].params
+            break
+    
+    early_stop={
+        "fallos_init":lmparams["lamda_init"],
+        "fallos_inc":lmparams["lambda_inc"],
+        "fallos_dec":lmparams["lambda_decr"],
+        "fallos_tol":1e10
+    }
+    
     
     for regla in range(
         config.experimentos.reglas_inicial,
@@ -306,7 +320,8 @@ def main(config:DataConfig):
                         train_y = OneHotEncode(train_y,config.experimentos.dataset_salidas)
                         test_y = OneHotEncode(test_y,config.experimentos.dataset_salidas)
                         val_y = OneHotEncode(val_y,config.experimentos.dataset_salidas)
-            
+
+
                 
                 if minilotes:
                     # se puede calcular el maximo de lotes usando 
@@ -322,12 +337,14 @@ def main(config:DataConfig):
                                                           tolerancia=config.experimentos.tolerancia,
                                                           shuffle=True,
                                                           debug=False,
-                                                          fn_loss_lst=metricas_importantes)
+                                                          fn_loss_lst=metricas_importantes,
+                                                          early_stop=early_stop)
                 else:                
                     hist_loss,metricas = train_nfs(modelo,train_x,train_y,
                                         config.experimentos.epocas,config.experimentos.tolerancia,
                                         debug=False,
-                                        fn_loss_lst=metricas_importantes)
+                                        fn_loss_lst=metricas_importantes,
+                                        early_stop=early_stop)
                 
                 device_test_x = test_x.to(gpu_device)
                 y_test = modelo(device_test_x)
