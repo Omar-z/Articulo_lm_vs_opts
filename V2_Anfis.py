@@ -462,18 +462,18 @@ def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False, 
             losses.append(loss)
 
         
-        if getattr(optimizer, "nombre",None) !="LM":
-            if loss < mejor_loss - min_delta:
-                mejor_loss = loss
-                fallos_init *= fallos_dec
-            else:
-                fallos_init *= fallos_inc
-            
-            if fallos_init >= fallos_tol:
-                print(f"[{epoch+1}] El modelo llego a fallas maximas {fallos_init:2d} >= {fallos_tol:2d}") if debug else ""
-                print(f"[{epoch+1}] con un loss de {loss:.6f}") if debug else ""
-                stop_event.set()
-                return losses, metricas
+        #if getattr(optimizer, "nombre",None) !="LM":
+        if loss < mejor_loss - min_delta:
+            mejor_loss = loss
+            fallos_init *= fallos_dec
+        else:
+            fallos_init *= fallos_inc
+        
+        if fallos_init >= fallos_tol:
+            print(f"[{epoch+1}] El modelo llego a fallas maximas {fallos_init:2d} >= {fallos_tol:2d}") if debug else ""
+            print(f"[{epoch+1}] con un loss de {loss:.6f}") if debug else ""
+            stop_event.set()
+            return losses, metricas
         
         if (epoch % int(epochs*.1) if epochs >100 else 10) == 0:
             print(f"Epoch {epoch}, Loss: {loss:.6f}") if debug else ""
@@ -580,18 +580,18 @@ def train_nfs_batch(model, X_train, y_train, epochs=100, batch_size=32, toleranc
         if (epoch % int(epochs*.1) if epochs >100 else 10) == 0:
             print(f"Epoch {epoch}, Loss: {loss_epoch:.6f}") if debug else ""
 
-        if getattr(optimizer, "nombre",None) !="LM":
-            if loss_epoch < mejor_loss - min_delta:
-                mejor_loss = loss_epoch
-                fallos_init *= fallos_dec
-            else:
-                fallos_init *= fallos_inc
-            
-            if fallos_init >= fallos_tol:
-                print(f"[{epoch+1}] El modelo llego a fallas maximas {fallos_init:2d} >= {fallos_tol:2d}") if debug else ""
-                print(f"[{epoch+1}] con un loss de {loss_epoch:.6f}") if debug else ""
-                stop_event.set()
-                return losses, metricas
+        #if getattr(optimizer, "nombre",None) !="LM":
+        if loss_epoch < mejor_loss - min_delta:
+            mejor_loss = loss_epoch
+            fallos_init *= fallos_dec
+        else:
+            fallos_init *= fallos_inc
+        
+        if fallos_init >= fallos_tol:
+            print(f"[{epoch+1}] El modelo llego a fallas maximas {fallos_init:2d} >= {fallos_tol:2d}") if debug else ""
+            print(f"[{epoch+1}] con un loss de {loss_epoch:.6f}") if debug else ""
+            stop_event.set()
+            return losses, metricas
 
         if(loss_epoch <= tolerancia):
             print(f"Se llego a la tolerancia {loss_epoch:.6f} <= {tolerancia}") if debug else ""
