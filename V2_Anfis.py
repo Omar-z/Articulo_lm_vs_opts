@@ -555,7 +555,7 @@ def train_nfs_batch(model, X_train, y_train, epochs=100, batch_size=32, toleranc
         if (epoch % int(epochs*.1) if epochs >100 else 10) == 0:
             print(f"Epoch {epoch}, Loss: {loss_epoch:.6f}") if debug else ""
 
-        if getattr(optimizer, "nomobre",None) !="LM":
+        if getattr(optimizer, "nombre",None) !="LM":
             if loss_epoch < mejor_loss - min_delta:
                 mejor_loss = loss_epoch
                 fallos = 0
