@@ -503,7 +503,13 @@ def train_nfs_batch(model, X_train, y_train, epochs=100, batch_size=32, toleranc
     stop_event = threading.Event()
     barra = threading.Thread(target=mostrar_barra_progreso,args=(estado,stop_event),daemon=True)
     barra.start()
-
+    
+    #parado antes
+    mejor_loss = float("inf")
+    fallos = 0
+    paciencia = 10
+    min_delta = 1e-5
+    
     for epoch in range(epochs):
         #se recorren los datos en un orden distinto cada epoca
         indices = torch.randperm(n_muestras) if shuffle else torch.arange(n_muestras)
@@ -548,6 +554,19 @@ def train_nfs_batch(model, X_train, y_train, epochs=100, batch_size=32, toleranc
 
         if (epoch % int(epochs*.1) if epochs >100 else 10) == 0:
             print(f"Epoch {epoch}, Loss: {loss_epoch:.6f}") if debug else ""
+
+        if getattr(optimizer, "nomobre",None) !="LM":
+            if loss_epoch < mejor_loss - min_delta:
+                mejor_loss = loss_epoch
+                fallos = 0
+            else:
+                fallos +=1
+            
+            if fallos >= paciencia:
+                print(f"[{epoch+1}] El modelo llego a fallas maximas {fallos:2d} >= {paciencia:2d}") if debug else ""
+                print(f"[{epoch+1}] con un loss de {loss_epoch:.6f}") if debug else ""
+                stop_event.set()
+                return losses, metricas
 
         if(loss_epoch <= tolerancia):
             print(f"Se llego a la tolerancia {loss_epoch:.6f} <= {tolerancia}") if debug else ""
