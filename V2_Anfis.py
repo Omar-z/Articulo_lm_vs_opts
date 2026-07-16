@@ -470,7 +470,100 @@ def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False, 
     
     stop_event.set()
     barra.join()
-    
+
+    return losses, metricas
+
+
+def train_nfs_batch(model, X_train, y_train, epochs=100, batch_size=32, tolerancia=1e-6, shuffle=True, debug=False, fn_loss_lst:dict={}) -> tuple[list[float],dict ]:
+    """
+    Train the neuro-fuzzy system using mini-batch optimization
+    """
+    print(f"Inputs: {X_train.shape} , Outputs: {y_train.shape}") if debug else ""
+    optimizer = model.optimizador
+    fn_loss = model.fn_loss
+    losses = []
+
+    estado={
+        "iter_act":0,
+        "iter_total":epochs,
+        "flair": f"loss \n",
+        "color": "\033[1;45;36m",
+        "cursor":"\033[3;1H"
+    }
+
+    fn_metricas=fn_loss_lst
+    metricas ={}
+    for fn_name, fn in fn_metricas.items():
+        metricas[fn_name] = []
+
+    n_muestras = X_train.shape[0]
+    #dispositivo donde viven los parametros; los datos se quedan en el host
+    device = next(model.parameters()).device
+
+    stop_event = threading.Event()
+    barra = threading.Thread(target=mostrar_barra_progreso,args=(estado,stop_event),daemon=True)
+    barra.start()
+
+    for epoch in range(epochs):
+        #se recorren los datos en un orden distinto cada epoca
+        indices = torch.randperm(n_muestras) if shuffle else torch.arange(n_muestras)
+
+        loss_acum = 0.0
+        met_acum = {fn_name: 0.0 for fn_name in fn_metricas}
+        for inicio in range(0, n_muestras, batch_size):
+            batch_idx = indices[inicio:inicio+batch_size]
+            #solo el batch actual se transfiere a device
+            X_batch = X_train[batch_idx].to(device)
+            y_batch = y_train[batch_idx].to(device)
+            b = X_batch.shape[0]
+
+            out = model(X_batch)
+            if(getattr(optimizer,"nombre",None) != "LM"):
+                optimizer.zero_grad()
+                loss = fn_loss(out, y_batch)
+                loss.backward()
+                optimizer.step()
+            else:
+                loss = optimizer.step(X_batch, y_batch)
+
+            loss_val = loss.item() if isinstance(loss, torch.Tensor) else loss
+            #se ponderan loss y metricas por el tamaño real del batch
+            loss_acum += loss_val * b
+            for fn_name, fn in fn_metricas.items():
+                met_acum[fn_name] += fn(out, y_batch).item() * b
+
+            #se descarta el batch de device antes de la siguiente iteracion
+            del X_batch, y_batch, out, loss
+            if device.type == "cuda":
+                torch.cuda.empty_cache()
+
+        #promedios de la epoca sobre todas las muestras
+        loss_epoch = loss_acum / n_muestras
+        losses.append(loss_epoch)
+        for fn_name in fn_metricas:
+            metricas[fn_name].append(met_acum[fn_name] / n_muestras)
+
+        estado["iter_act"]=epoch
+        estado["flair"] = f"loss: {loss_epoch:.8f}\n"
+
+        if (epoch % int(epochs*.1) if epochs >100 else 10) == 0:
+            print(f"Epoch {epoch}, Loss: {loss_epoch:.6f}") if debug else ""
+
+        if(loss_epoch <= tolerancia):
+            print(f"Se llego a la tolerancia {loss_epoch:.6f} <= {tolerancia}") if debug else ""
+            stop_event.set()
+            return losses, metricas
+
+        if(getattr(optimizer,"nombre",None) == "LM"):
+            if(optimizer.lambda_val > optimizer.lambda_max):
+                print(f"[{epoch+1}] El modelo llego a las mu maximas {optimizer.lambda_val:.1E} >= {optimizer.lambda_max:.1E}({optimizer.lambda_val>=optimizer.lambda_max})") if debug else ""
+                print(f"[{epoch+1}] con un loss de {loss_epoch:.6f}") if debug else ""
+                stop_event.set()
+                return losses, metricas
+
+    stop_event.set()
+    barra.join()
+
     return losses, metricas
 
 

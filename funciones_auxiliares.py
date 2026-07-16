@@ -275,6 +275,7 @@ class DataExperimento:
     train_size:float
     test_size:float
     val_size:float
+    lote_size:int=None
 
 @dataclass
 class DataConfig:

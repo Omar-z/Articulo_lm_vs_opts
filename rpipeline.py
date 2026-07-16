@@ -21,7 +21,7 @@ from funciones_auxiliares import DataOptimizador,DataExperimento,DataConfig
 
 # ANFIS
 from Anfis_utils import CargarFIS,CrearFISInicial,GuardarFIS
-from V2_Anfis import RLANFISBuilder,train_nfs,LevenberMaquardtOpt,Optimizador,ANFISND, cantidad_reglas,mostrar_barra_progreso
+from V2_Anfis import RLANFISBuilder,train_nfs,LevenberMaquardtOpt,Optimizador,ANFISND, cantidad_reglas,mostrar_barra_progreso,train_nfs_batch
 from funciones_auxiliares import OneHotEncode,PlotTraining, confusion_matrix
 
 _timer_inicio = 0.0
@@ -117,6 +117,7 @@ def main(config:DataConfig):
     global dispositivo
     global mejores_parametros
     global mp_path
+    global minilotes
     sys.stdout.write("\033[2J\033[1;1H") #borrar pantalla
     # cargar datos
     
@@ -276,29 +277,61 @@ def main(config:DataConfig):
                 d_test_x, d_val_x, d_test_y, d_val_y = train_test_split(d_x_temp,d_y_temp,test_size=config.experimentos.val_size,random_state=semilla_corrida)
             
                 # generar los modelos y convertir a tensores
-            
-                train_x = torch.from_numpy(d_train_x).to(torch.float64).to(gpu_device)
-                train_y = torch.from_numpy(d_train_y).to(torch.float64).to(gpu_device)
+                if not minilotes: # todo se carga a GPU
+                    train_x = torch.from_numpy(d_train_x).to(torch.float64).to(gpu_device)
+                    train_y = torch.from_numpy(d_train_y).to(torch.float64).to(gpu_device)
 
-                test_x = torch.from_numpy(d_test_x).to(torch.float64).to(gpu_device)
-                test_y = torch.from_numpy(d_test_y).to(torch.float64).to(gpu_device)
+                    test_x = torch.from_numpy(d_test_x).to(torch.float64).to(gpu_device)
+                    test_y = torch.from_numpy(d_test_y).to(torch.float64).to(gpu_device)
 
-                val_x = torch.from_numpy(d_val_x).to(torch.float64).to(gpu_device)
-                val_y = torch.from_numpy(d_val_y).to(torch.float64).to(gpu_device)
-                
-                if config.experimentos.tipo == "clasificacion":
-                    train_y = OneHotEncode(train_y,config.experimentos.dataset_salidas).to(gpu_device)
-                    test_y = OneHotEncode(test_y,config.experimentos.dataset_salidas).to(gpu_device)
-                    val_y = OneHotEncode(val_y,config.experimentos.dataset_salidas).to(gpu_device)
+                    val_x = torch.from_numpy(d_val_x).to(torch.float64).to(gpu_device)
+                    val_y = torch.from_numpy(d_val_y).to(torch.float64).to(gpu_device)
+                    
+                    if config.experimentos.tipo == "clasificacion":
+                        train_y = OneHotEncode(train_y,config.experimentos.dataset_salidas).to(gpu_device)
+                        test_y = OneHotEncode(test_y,config.experimentos.dataset_salidas).to(gpu_device)
+                        val_y = OneHotEncode(val_y,config.experimentos.dataset_salidas).to(gpu_device)
+
+                else: #solo el batche en la función de entrenamiento lo va cargar a GPU
+                    train_x = torch.from_numpy(d_train_x).to(torch.float64)
+                    train_y = torch.from_numpy(d_train_y).to(torch.float64)
+
+                    test_x = torch.from_numpy(d_test_x).to(torch.float64)
+                    test_y = torch.from_numpy(d_test_y).to(torch.float64)
+
+                    val_x = torch.from_numpy(d_val_x).to(torch.float64)
+                    val_y = torch.from_numpy(d_val_y).to(torch.float64)
+                    
+                    if config.experimentos.tipo == "clasificacion":
+                        train_y = OneHotEncode(train_y,config.experimentos.dataset_salidas)
+                        test_y = OneHotEncode(test_y,config.experimentos.dataset_salidas)
+                        val_y = OneHotEncode(val_y,config.experimentos.dataset_salidas)
             
                 
+                if minilotes:
+                    # se puede calcular el maximo de lotes usando 
+                    # vramGPUbytes = torch.cuda.get_device_properties(0).total_memory
+                    # pesoModelo = reglas * (2*entradas + salidas)
+                    # pesoJacobb = batch*2*pesoModelo*float64(8bytes)
+                    # pesoTotal = float64*pesoModelo²+pesoJaccob [creo que aproximadamente es 230mbs por lo que vi en las pruebas]
+                    # bytes = x_batch.element_size() * x_batch.nelement()  < (vramGPUbytes - pesoTotal)
+                    lotes = config.experimentos.lote_size
+                    hist_loss, metricas = train_nfs_batch(modelo,train_x,train_y,
+                                                          config.experimentos.epocas, 
+                                                          batch_size=lotes, 
+                                                          tolerancia=config.experimentos.tolerancia,
+                                                          shuffle=True,
+                                                          debug=False,
+                                                          fn_loss_lst=metricas_importantes)
+                else:                
+                    hist_loss,metricas = train_nfs(modelo,train_x,train_y,
+                                        config.experimentos.epocas,config.experimentos.tolerancia,
+                                        debug=False,
+                                        fn_loss_lst=metricas_importantes)
                 
-                hist_loss,metricas = train_nfs(modelo,train_x,train_y,
-                                    config.experimentos.epocas,config.experimentos.tolerancia,
-                                    debug=False,
-                                    fn_loss_lst=metricas_importantes)
+                device_test_x = test_x.to(gpu_device)
+                y_test = modelo(device_test_x)
                 
-                y_test = modelo(test_x)
                 if config.experimentos.tipo == "clasificacion":
                     #calcular las precicion y la exactitud
                     acc,prec = confusion_matrix(y_test,test_y,num_classes=config.experimentos.dataset_salidas,plot=False)
@@ -309,6 +342,7 @@ def main(config:DataConfig):
                     r,r2= PlotTraining(test_x,y_test,test_y,plot=False,debug=False)
                     estadisticas[m.nombre][regla]["r2s"].append(r2)
                 
+                del device_test_x, y_test
                 #SSE,MSE,RMSE,MAE
                 for metrica_nombre in metricas.keys():
                     estadisticas[m.nombre][regla][metrica_nombre] += metricas[metrica_nombre]
@@ -545,14 +579,15 @@ def fis_nan_values_edit(fisstr:str)->None:
 
 mejores_parametros = False
 mp_path =""
-
+minilotes=False
 if __name__ == "__main__":
     help = """
         Args:
         [0] - script name
         [1] - json con la configuración de los experimentos (e.g. "iris_config.json")
         [2] - usar dispositivo (cuda, mps, sin nada es cpu)
-        [3] - graficar (opcional) si se pone "graficar" se generan las graficas de los resultados         
+        [3] - graficar (opcional) si se pone "graficar" se generan las graficas de los resultados  
+        [3] - lotes (opcional) si se pone "true" o "cualquier otra cosa" se hara el entrenamiento por lotes, si no se pone nada, no se hace por lotes       
         
     """
     
@@ -565,7 +600,11 @@ if __name__ == "__main__":
     
     if len(sys.argv) >= 4:
         graficar = True if sys.argv[3].lower() == "graficar" else False
-        
+
+    if len(sys.argv)>=5:
+        minilotes = True
+    #    lotes = int(sys.argv[4])
+
     json_path = sys.argv[1]
     with open(json_path,'r') as file:
         config = json.load(file)
@@ -583,6 +622,8 @@ if __name__ == "__main__":
     
     
     data_config = parsear_json(config)
+
+
     timer_start()
     main(data_config)
     timer_end()

@@ -6,6 +6,7 @@ con toda la configuración del experimento (optimizadores, dataset, hiperparáme
 python rpipeline.py iris_tests.json  # por defecto es cpu
 python rpipeline.py iris_tests.json cuda # posibles valores cpu, cuda y mps
 python rpipeline.py iris_tests.json cuda graficar # posibles graficar o nada
+python rpipeline.py iris_tests.json cuda graficar lote # lote literal la palabra lote o nada si no se quiere por lotes
 ```
 
 # Configuración Experimento
@@ -70,6 +71,7 @@ Objeto único con la definición del dataset y los hiperparámetros de entrenami
 | `train_size`      | float  | Proporción de datos para entrenamiento (0–1). |
 | `test_size`       | float  | Proporción para prueba (0–1). |
 | `val_size`        | float  | Proporción para validación (0–1). |
+| `lote_size`        | int  | tamaño del lote un valor de 1 a número de muestras. |
 
 ### Ejemplo mínimo
 
@@ -99,7 +101,8 @@ Objeto único con la definición del dataset y los hiperparámetros de entrenami
     "reglas_total": 10,
     "train_size": 0.6,
     "test_size": 0.2,
-    "val_size": 0.2
+    "val_size": 0.2,
+    "lote_size": 128
   }
 }
 ```
