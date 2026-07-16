@@ -347,19 +347,21 @@ def main(config:DataConfig):
                                         early_stop=early_stop)
                 
                 device_test_x = test_x.to(gpu_device)
+                device_test_y = test_y.to(gpu_device)
+
                 y_test = modelo(device_test_x)
                 
                 if config.experimentos.tipo == "clasificacion":
                     #calcular las precicion y la exactitud
-                    acc,prec = confusion_matrix(y_test,test_y,num_classes=config.experimentos.dataset_salidas,plot=False)
+                    acc,prec = confusion_matrix(y_test,device_test_y,num_classes=config.experimentos.dataset_salidas,plot=False)
                     estadisticas[m.nombre][regla]["accuracys"].append(acc)
                     estadisticas[m.nombre][regla]["presicions"].append(prec)
                 else:
                     #calcular la r2
-                    r,r2= PlotTraining(test_x,y_test,test_y,plot=False,debug=False)
+                    r,r2= PlotTraining(test_x,y_test,device_test_y,plot=False,debug=False)
                     estadisticas[m.nombre][regla]["r2s"].append(r2)
                 
-                del device_test_x, y_test
+                del device_test_x, y_test,device_test_y
                 #SSE,MSE,RMSE,MAE
                 for metrica_nombre in metricas.keys():
                     estadisticas[m.nombre][regla][metrica_nombre] += metricas[metrica_nombre]
