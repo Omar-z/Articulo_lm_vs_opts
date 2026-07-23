@@ -191,9 +191,9 @@ def main(config:DataConfig):
             break
     
     early_stop={
-        "fallos_init":lmparams["lambda_init"],
-        "fallos_inc":lmparams["lambda_incr"],
-        "fallos_dec":lmparams["lambda_decr"],
+        "fallos_init":lmparams["lambda_init"] if lmparams!=None else 0.01,
+        "fallos_inc":lmparams["lambda_incr"] if lmparams!=None else 10,
+        "fallos_dec":lmparams["lambda_decr"] if lmparams!=None else 0.1,
         "fallos_tol":1e10
     }
     
