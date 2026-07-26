@@ -194,7 +194,7 @@ def main(config:DataConfig):
     
     #por cara regla se genera una politica diferente
     politicas=[
-            PoliticaTolerancia(1e-8),
+            PoliticaTolerancia(config.experimentos.tolerancia),
             PoliticaFallos(
                 limite=1e10,
                 init=lmparams["lambda_init"] if lmparams!=None else 0.01,
