@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<div class="constructor">
+  <h1>Constructor de experimentos</h1>
+  <p class="subtitulo">
+    Equivale al JSON que recibe <code>rpipeline.py</code>, pero sin escribirlo a mano.
+    Puedes validar antes de gastar CPU y descargar la configuración para el script.
+  </p>
+
+  <!-- 1. Dataset ------------------------------------------------------------ -->
+  <section class="panel">
+    <h2>1 · Dataset</h2>
+    <div class="rejilla-campos">
+      <div class="campo">
+        <label for="dataset">Archivo</label>
+        <select id="dataset"><option value="">cargando…</option></select>
+      </div>
+      <div class="campo">
+        <label for="tipo">Tipo de problema</label>
+        <select id="tipo">
+          <option value="clasificacion">clasificación</option>
+          <option value="regresion">regresión</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="dataset_entradas">Entradas</label>
+        <input type="number" id="dataset_entradas" min="1" value="4">
+      </div>
+      <div class="campo">
+        <label for="dataset_salidas">Salidas / clases</label>
+        <input type="number" id="dataset_salidas" min="1" value="3">
+      </div>
+      <div class="campo">
+        <label for="dataset_target_col">Columna objetivo <span class="tenue">(vacío = por posición)</span></label>
+        <input type="number" id="dataset_target_col" placeholder="—">
+      </div>
+      <div class="campo">
+        <label for="dataset_sep">Separador <span class="tenue">(vacío = inferido)</span></label>
+        <input type="text" id="dataset_sep" placeholder="," maxlength="4">
+      </div>
+    </div>
+
+    <div class="campo" style="margin-top:.8rem">
+      <label for="dataset_map_col">Mapa de clases <span class="tenue">(JSON; vacío si el objetivo ya es numérico)</span></label>
+      <textarea id="dataset_map_col" rows="2" placeholder='{"Iris-setosa": 0, "Iris-versicolor": 1}'></textarea>
+    </div>
+
+    <div id="aviso-dataset" class="aviso info" style="display:none;margin-top:.9rem"></div>
+    <div class="tabla-envoltura" id="previa-dataset" style="margin-top:.9rem"></div>
+  </section>
+
+  <!-- 2. Optimizadores ------------------------------------------------------ -->
+  <section class="panel">
+    <div class="encabezado-panel">
+      <h2>2 · Optimizadores a comparar</h2>
+      <div class="control-en-linea">
+        <select id="selector-optimizador"><option value="">cargando…</option></select>
+        <button id="btn-agregar-optimizador" class="primario">Añadir</button>
+      </div>
+    </div>
+    <div id="lista-optimizadores" class="lista-optimizadores">
+      <p class="vacio">Añade al menos un optimizador.</p>
+    </div>
+  </section>
+
+  <!-- 3. Entrenamiento ------------------------------------------------------ -->
+  <section class="panel">
+    <h2>3 · Entrenamiento</h2>
+    <div class="rejilla-campos">
+      <div class="campo"><label for="reglas_inicial">Reglas desde</label>
+        <input type="number" id="reglas_inicial" min="1" value="3"></div>
+      <div class="campo"><label for="reglas_total">Reglas hasta</label>
+        <input type="number" id="reglas_total" min="1" value="5"></div>
+      <div class="campo"><label for="corridas">Corridas por combinación</label>
+        <input type="number" id="corridas" min="1" value="3"></div>
+      <div class="campo"><label for="epocas">Épocas máximas</label>
+        <input type="number" id="epocas" min="1" value="1000"></div>
+      <div class="campo"><label for="funcion_perdida">Función de pérdida</label>
+        <select id="funcion_perdida"></select></div>
+      <div class="campo"><label for="tolerancia">Tolerancia</label>
+        <input type="text" id="tolerancia" value="1e-12"></div>
+      <div class="campo"><label for="fallos">Fallos máximos</label>
+        <input type="number" id="fallos" min="1" value="10"></div>
+      <div class="campo"><label for="dispositivo">Dispositivo</label>
+        <select id="dispositivo"></select></div>
+      <div class="campo"><label for="test_size">Proporción de prueba</label>
+        <input type="number" id="test_size" step="0.05" min="0.05" max="0.95" value="0.2"></div>
+      <div class="campo"><label for="val_size">Proporción de validación</label>
+        <input type="number" id="val_size" step="0.05" min="0.05" max="0.95" value="0.2"></div>
+      <div class="campo"><label for="semilla">Semilla maestra <span class="tenue">(opcional)</span></label>
+        <input type="number" id="semilla" placeholder="aleatoria"></div>
+      <div class="campo">
+        <label class="usar-defecto"><input type="checkbox" id="minilotes"> entrenar por minilotes</label>
+        <input type="number" id="lote_size" min="1" value="128" placeholder="tamaño de lote" disabled>
+      </div>
+    </div>
+    <p class="tenue" id="proporciones-efectivas" style="margin-bottom:0"></p>
+  </section>
+
+  <!-- 4. Resumen ------------------------------------------------------------ -->
+  <section class="panel">
+    <h2>4 · Resumen y acciones</h2>
+    <p id="resumen-total" class="tenue"></p>
+    <div id="resultado-validacion"></div>
+    <div class="acciones">
+      <button id="btn-validar">Validar</button>
+      <button id="btn-descargar">Descargar JSON para rpipeline</button>
+      <button id="btn-guardar">Guardar configuración</button>
+      <button id="btn-ejecutar" class="primario">Ejecutar ahora</button>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/estaticos/js/formulario_hiperparametros.js"></script>
+<script src="/estaticos/js/constructor.js"></script>
+{% endblock %}

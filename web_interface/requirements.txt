@@ -1,0 +1,15 @@
+# Dependencias de la interfaz web.
+#
+# Solo se listan las que FALTAN en el entorno conda `caic`. Instalar con:
+#   conda activate caic
+#   python -m pip install -r web_interface/requirements.txt
+
+fastapi>=0.115
+uvicorn[standard]>=0.32
+pydantic>=2.9
+python-multipart>=0.0.9
+jinja2>=3.1
+
+# Ya presentes en `caic`, NO se reinstalan:
+#   torch 2.12.1, numpy, pandas 2.3.0, scipy 1.15.2, scikit-learn 1.7.0,
+#   matplotlib, fuzzylab 0.13, openpyxl, xlrd

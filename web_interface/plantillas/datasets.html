@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<h1>Datasets</h1>
+<p class="subtitulo">
+  Los de <code>data_sets/</code> son de solo lectura. Los que subas aquí se guardan
+  en <code>web_interface/data/datasets/</code> y quedan disponibles en el constructor.
+</p>
+
+<section class="panel">
+  <h2>Subir un dataset</h2>
+  <div id="zona-subida" class="zona-subida">
+    <p>Arrastra un archivo aquí o <label class="enlace-falso" for="archivo">selecciónalo</label>.</p>
+    <p class="tenue">Admitidos: .csv, .data, .txt, .xls, .xlsx, .mat · máximo 200 MB</p>
+    <input type="file" id="archivo" accept=".csv,.data,.txt,.xls,.xlsx,.mat" hidden>
+  </div>
+  <p id="estado-subida" class="tenue"></p>
+</section>
+
+<section class="panel">
+  <div class="encabezado-panel">
+    <h2>Catálogo</h2>
+    <label class="control-en-linea">
+      origen
+      <select id="filtro-origen">
+        <option value="">todos</option>
+        <option value="repo">del repositorio</option>
+        <option value="web">subidos</option>
+      </select>
+    </label>
+  </div>
+  <div class="tabla-envoltura">
+    <table id="tabla-datasets">
+      <thead>
+        <tr><th>Archivo</th><th>Ruta</th><th>Origen</th><th class="num">Tamaño</th><th></th></tr>
+      </thead>
+      <tbody><tr><td colspan="5" class="vacio">Cargando…</td></tr></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/estaticos/js/datasets.js"></script>
+{% endblock %}

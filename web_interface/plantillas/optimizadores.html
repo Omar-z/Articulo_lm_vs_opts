@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<h1>Optimizadores</h1>
+<p class="subtitulo">
+  El catálogo se construye por introspección: se leen las firmas reales de
+  <code>torch.optim</code>, del Levenberg&ndash;Marquardt del proyecto y de tus plugins,
+  así que no hay ninguna tabla que mantener a mano.
+</p>
+
+<section class="panel">
+  <div class="encabezado-panel">
+    <h2>Plugins</h2>
+    <button id="btn-recargar">Recargar plugins</button>
+  </div>
+  <p class="tenue">
+    Deja un archivo <code>.py</code> en <code>web_interface/plugins/</code> con una
+    clase que derive de <code>torch.optim.Optimizer</code> y pulsa Recargar.
+  </p>
+  <div class="aviso">
+    Los archivos de <code>plugins/</code> <strong>se ejecutan con los permisos de este
+    proceso</strong>. Por eso no se pueden subir por la web: los depositas tú con tu editor.
+  </div>
+  <div id="estado-plugins"></div>
+</section>
+
+<section class="panel">
+  <h2>Catálogo</h2>
+  <div id="lista-catalogo" class="rejilla-catalogo">
+    <p class="vacio">Cargando…</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/estaticos/js/formulario_hiperparametros.js"></script>
+<script>
+class CatalogoDeOptimizadores {
+  constructor() {
+    this.lista = document.getElementById("lista-catalogo");
+    document.getElementById("btn-recargar")
+      .addEventListener("click", () => this.recargar());
+    this.cargar();
+  }
+
+  async cargar() {
+    try {
+      const datos = await ClienteAPI.obtener("/api/optimizadores");
+      this.pintar(datos.optimizadores);
+      this.pintarErrores(datos.errores_plugins, datos.plugins_permitidos);
+    } catch (error) {
+      this.lista.innerHTML = "<p class='vacio'>No se pudo cargar: " +
+        escaparHTML(error.message) + "</p>";
+    }
+  }
+
+  async recargar() {
+    const estado = document.getElementById("estado-plugins");
+    estado.innerHTML = "<p class='tenue'>Re-escaneando…</p>";
+    try {
+      const r = await ClienteAPI.enviar("/api/optimizadores/recargar-plugins");
+      estado.innerHTML = "<div class='aviso info'>" +
+        (r.cargados.length
+          ? "Cargados: <strong>" + r.cargados.map(escaparHTML).join(", ") + "</strong>"
+          : "No se encontró ninguna clase de optimizador en la carpeta.") +
+        "</div>";
+      this.pintarErrores(r.errores, r.permitido);
+      this.cargar();
+    } catch (error) {
+      estado.innerHTML = "<div class='aviso error'>" +
+        escaparHTML(error.message) + "</div>";
+    }
+  }
+
+  pintarErrores(errores, permitido) {
+    if (permitido === false) {
+      document.getElementById("estado-plugins").innerHTML =
+        "<div class='aviso'>La carga de plugins está desactivada en la configuración.</div>";
+      return;
+    }
+    if (!errores || !errores.length) return;
+    document.getElementById("estado-plugins").innerHTML +=
+      "<div class='aviso error'><strong>Plugins con errores:</strong><ul>" +
+      errores.map((e) => "<li><code>" + escaparHTML(e.archivo) + "</code>: " +
+        escaparHTML(e.mensaje) + "</li>").join("") + "</ul></div>";
+  }
+
+  pintar(optimizadores) {
+    this.lista.innerHTML = optimizadores.map((o) => {
+      const principales = o.hiperparametros.filter((h) => h.principal);
+      const resto = o.hiperparametros.length - principales.length;
+      const etiqueta = { torch: "PyTorch", propio: "del proyecto", plugin: "plugin" }[o.origen];
+      return "<article class='tarjeta-catalogo" + (o.compatible ? "" : " incompatible") + "'>" +
+        "<header><strong>" + escaparHTML(o.nombre) + "</strong>" +
+        "<span class='insignia " + (o.origen === 'propio' ? 'terminado' :
+          o.origen === 'plugin' ? 'ejecutando' : 'pendiente') + "'>" + etiqueta + "</span></header>" +
+        (o.doc ? "<p class='tenue doc'>" + escaparHTML(o.doc) + "</p>" : "") +
+        (o.compatible ? "" :
+          "<p class='aviso error' style='margin:.4rem 0'>" +
+          escaparHTML(o.motivo_incompatible) + "</p>") +
+        "<p class='tenue'>" +
+          (o.recibe_parametros
+            ? "Recibe los parámetros del modelo (estilo <code>torch.optim</code>)."
+            : "Recibe el modelo completo (estilo del LM del proyecto).") +
+        "</p>" +
+        "<ul class='hiperlista'>" +
+          principales.map((h) => "<li><code>" + escaparHTML(h.nombre) + "</code> = " +
+            escaparHTML(JSON.stringify(h.por_defecto)) + "</li>").join("") +
+          (resto > 0 ? "<li class='tenue'>y " + resto + " avanzado(s)</li>" : "") +
+        "</ul></article>";
+    }).join("");
+  }
+}
+document.addEventListener("DOMContentLoaded", () => new CatalogoDeOptimizadores());
+</script>
+{% endblock %}

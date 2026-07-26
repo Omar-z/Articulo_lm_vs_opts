@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}{{ titulo|default("Laboratorio ANFIS") }}{% endblock %}</title>
+  <link rel="stylesheet" href="/estaticos/css/estilos.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>&#129504;</text></svg>">
+  {% block cabecera %}{% endblock %}
+</head>
+<body>
+  <header class="barra-superior">
+    <a class="marca" href="/">
+      <span class="marca-icono">&#9883;</span>
+      <span>Laboratorio <strong>ANFIS</strong></span>
+    </a>
+    <nav class="navegacion">
+      <a href="/constructor" class="{{ 'activo' if seccion == 'constructor' }}">Constructor</a>
+      <a href="/trabajos" class="{{ 'activo' if seccion == 'trabajos' }}">Trabajos</a>
+      <a href="/historial" class="{{ 'activo' if seccion == 'historial' }}">Historial</a>
+      <a href="/datasets" class="{{ 'activo' if seccion == 'datasets' }}">Datasets</a>
+      <a href="/optimizadores" class="{{ 'activo' if seccion == 'optimizadores' }}">Optimizadores</a>
+      <a href="/hiperparametros" class="{{ 'activo' if seccion == 'hiperparametros' }}">Hiperparámetros</a>
+    </nav>
+  </header>
+
+  <main class="contenido">
+    {% block contenido %}{% endblock %}
+  </main>
+
+  <footer class="pie">
+    <span id="estado-servidor" class="etiqueta-estado">comprobando…</span>
+  </footer>
+
+  <script src="/estaticos/js/api.js"></script>
+  <script>
+    ClienteAPI.obtener("/api/salud").then(function (s) {
+      var el = document.getElementById("estado-servidor");
+      el.textContent = "torch " + s.torch + " · Python " + s.python + " · " +
+        s.dispositivos.filter(function (d) { return d.disponible && d.compatible; })
+                      .map(function (d) { return d.id; }).join(", ");
+      el.classList.add("ok");
+    }).catch(function () {
+      document.getElementById("estado-servidor").textContent = "sin conexión con el servidor";
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
