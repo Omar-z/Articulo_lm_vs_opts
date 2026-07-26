@@ -18,7 +18,7 @@ from typing import Any
 import threading
 from copy import deepcopy
 from funciones_auxiliares import DataOptimizador,DataExperimento,DataConfig
-from funciones_auxiliares import PoliticaTolerancia, PoliticaFallos,PoliticaLambdaLM
+from funciones_auxiliares import PoliticaTolerancia, PoliticaFallos,PoliticaLambdaLM,PoliticaNanOrInf
 
 
 # ANFIS
@@ -194,6 +194,7 @@ def main(config:DataConfig):
     
     #por cara regla se genera una politica diferente
     politicas=[
+            PoliticaNanOrInf(),
             PoliticaTolerancia(config.experimentos.tolerancia),
             PoliticaFallos(
                 limite=1e10,

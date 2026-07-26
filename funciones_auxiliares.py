@@ -318,13 +318,19 @@ class PoliticaFallos(PoliticaDeParo):
         return (self.valor_actual >= self.limite)
 
 class PoliticaLambdaLM(PoliticaDeParo):
-    def __init__(self):
+    def __init__(self)->None:
         self.nombre = "Politica de Fallos de Lambda LM"
     def apply(self, loss_value:float, optimizador:Any)->bool:
         if(getattr(optimizador,"nombre",None) != "LM"):
             return False
         return (optimizador.lambda_val > optimizador.lambda_max)
 
+class PoliticaNanOrInf(PoliticaDeParo):
+    def __init__(self)->None:
+        self.nombre = "Politica de NaN o Inf"
+    def apply(self,loss_value:float, optimizador:Any)->bool:
+        return np.isnan(loss_value) or np.isinf(loss_value)
+    
 class CompositorDePoliticas:
     def __init__(self, politicas:list[PoliticaDeParo])->None:
         self.politicas = politicas
