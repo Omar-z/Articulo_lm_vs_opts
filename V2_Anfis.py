@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from Anfis_utils import CargarFIS,CrearFISInicial,GuardarFIS
 from funciones_auxiliares import OneHotEncode,PlotTraining, confusion_matrix
+from funciones_auxiliares import CompositorDePoliticas,PoliticaDeParo
 
 #clase abstracta para el optimizadores
 class Optimizador:
@@ -426,14 +427,8 @@ def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False, 
     stop_event = threading.Event()
     barra = threading.Thread(target=mostrar_barra_progreso,args=(estado,stop_event),daemon=True)
     barra.start()
-
-    #parado antes
-    mejor_loss = float("inf")
-    fallos_init =early_stop["fallos_init"]
-    fallos_inc = early_stop["fallos_inc"]
-    fallos_dec = early_stop["fallos_dec"]
-    fallos_tol = early_stop["fallos_tol"]
-    min_delta = 1e-5
+    
+    politicas_de_paro = CompositorDePoliticas(early_stop)
     
     for epoch in range(epochs):
         #optimizadores de pytorch no usan parámetros en el step
@@ -463,32 +458,13 @@ def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False, 
 
         
         #if getattr(optimizer, "nombre",None) !="LM":
-        if loss < mejor_loss - min_delta:
-            mejor_loss = loss
-            fallos_init *= fallos_dec
-        else:
-            fallos_init *= fallos_inc
-        
-        if fallos_init >= fallos_tol:
-            print(f"[{epoch+1}] El modelo llego a fallas maximas {fallos_init:2d} >= {fallos_tol:2d}") if debug else ""
-            print(f"[{epoch+1}] con un loss de {loss:.6f}") if debug else ""
-            stop_event.set()
-            return losses, metricas
-        
         if (epoch % int(epochs*.1) if epochs >100 else 10) == 0:
-            print(f"Epoch {epoch}, Loss: {loss:.6f}") if debug else ""
-        
-        if(loss <= tolerancia):
-            print(f"Se llego a la tolerancia {loss:.6f} <= {tolerancia}") if debug else ""
+                    print(f"Epoch {epoch}, Loss: {loss:.6f}") if debug else ""
+                
+        if(politicas_de_paro.apply(loss,optimizer)):
             stop_event.set()
-            return losses, metricas
+            return losses,metricas
         
-        if(getattr(optimizer,"nombre",None) == "LM"):
-            if(optimizer.lambda_val > optimizer.lambda_max):
-                print(f"[{epoch+1}] El modelo llego a las mu maximas {optimizer.lambda_val:.1E} >= {optimizer.lambda_max:.1E}({optimizer.lambda_val>=optimizer.lambda_max})") if debug else ""
-                print(f"[{epoch+1}] con un loss de {loss:.6f}") if debug else ""
-                stop_event.set()
-                return losses, metricas
     
     stop_event.set()
     barra.join()
@@ -497,7 +473,8 @@ def train_nfs(model, X_train, y_train, epochs=100,tolerancia=1e-6, debug=False, 
 
 
 def train_nfs_batch(model, X_train, y_train, epochs=100, batch_size=32, tolerancia=1e-6, shuffle=True, debug=False, fn_loss_lst:dict={},
-                    early_stop={"fallos_init":0.01,"fallos_inc":10,"fallos_dec":0.1,"fallos_tol":1e20}) -> tuple[list[float],dict ]:
+                    early_stop:list[PoliticaDeParo]=[]#{"fallos_init":0.01,"fallos_inc":10,"fallos_dec":0.1,"fallos_tol":1e20}
+                    ) -> tuple[list[float],dict ]:
     """
     Train the neuro-fuzzy system using mini-batch optimization
     """
@@ -527,13 +504,7 @@ def train_nfs_batch(model, X_train, y_train, epochs=100, batch_size=32, toleranc
     barra = threading.Thread(target=mostrar_barra_progreso,args=(estado,stop_event),daemon=True)
     barra.start()
     
-    #parado antes
-    mejor_loss = float("inf")
-    fallos_init =early_stop["fallos_init"]
-    fallos_inc = early_stop["fallos_inc"]
-    fallos_dec = early_stop["fallos_dec"]
-    fallos_tol = early_stop["fallos_tol"]
-    min_delta = 1e-5
+    politicas_de_paro = CompositorDePoliticas(early_stop)
     
     for epoch in range(epochs):
         #se recorren los datos en un orden distinto cada epoca
@@ -580,30 +551,10 @@ def train_nfs_batch(model, X_train, y_train, epochs=100, batch_size=32, toleranc
         if (epoch % int(epochs*.1) if epochs >100 else 10) == 0:
             print(f"Epoch {epoch}, Loss: {loss_epoch:.6f}") if debug else ""
 
-        #if getattr(optimizer, "nombre",None) !="LM":
-        if loss_epoch < mejor_loss - min_delta:
-            mejor_loss = loss_epoch
-            fallos_init *= fallos_dec
-        else:
-            fallos_init *= fallos_inc
+        if(politicas_de_paro.apply(loss_epoch,optimizer)):
+            stop_event.set()
+            return losses,metricas
         
-        if fallos_init >= fallos_tol:
-            print(f"[{epoch+1}] El modelo llego a fallas maximas {fallos_init:2d} >= {fallos_tol:2d}") if debug else ""
-            print(f"[{epoch+1}] con un loss de {loss_epoch:.6f}") if debug else ""
-            stop_event.set()
-            return losses, metricas
-
-        if(loss_epoch <= tolerancia):
-            print(f"Se llego a la tolerancia {loss_epoch:.6f} <= {tolerancia}") if debug else ""
-            stop_event.set()
-            return losses, metricas
-
-        if(getattr(optimizer,"nombre",None) == "LM"):
-            if(optimizer.lambda_val > optimizer.lambda_max):
-                print(f"[{epoch+1}] El modelo llego a las mu maximas {optimizer.lambda_val:.1E} >= {optimizer.lambda_max:.1E}({optimizer.lambda_val>=optimizer.lambda_max})") if debug else ""
-                print(f"[{epoch+1}] con un loss de {loss_epoch:.6f}") if debug else ""
-                stop_event.set()
-                return losses, metricas
 
     stop_event.set()
     barra.join()

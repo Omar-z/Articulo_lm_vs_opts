@@ -16,7 +16,9 @@ import json
 import time
 from typing import Any
 import threading
+from copy import deepcopy
 from funciones_auxiliares import DataOptimizador,DataExperimento,DataConfig
+from funciones_auxiliares import PoliticaTolerancia, PoliticaFallos,PoliticaLambdaLM
 
 
 # ANFIS
@@ -190,19 +192,25 @@ def main(config:DataConfig):
             lmparams = config.optimizadores[0].params
             break
     
-    early_stop={
-        "fallos_init":lmparams["lambda_init"] if lmparams!=None else 0.01,
-        "fallos_inc":lmparams["lambda_incr"] if lmparams!=None else 10,
-        "fallos_dec":lmparams["lambda_decr"] if lmparams!=None else 0.1,
-        "fallos_tol":1e10
-    }
-    
+    #por cara regla se genera una politica diferente
+    politicas=[
+            PoliticaTolerancia(1e-8),
+            PoliticaFallos(
+                limite=1e10,
+                init=lmparams["lambda_init"] if lmparams!=None else 0.01,
+                inc=lmparams["lambda_incr"] if lmparams!=None else 10,
+                dec=lmparams["lambda_decr"] if lmparams!=None else 0.1
+            ),
+            PoliticaLambdaLM()
+        ]
     
     for regla in range(
         config.experimentos.reglas_inicial,
         config.experimentos.reglas_total+1):
         
         estado["iter_act"] = regla
+        
+        
         
         
         # generar datos dummy para el fis
@@ -270,6 +278,8 @@ def main(config:DataConfig):
             
             # hacer n corridas y calcular el promedio por modelo
             for corrida in range(exp_corridas):
+                
+                early_stop = deepcopy(politicas)
                 modelo = RLANFISBuilder() \
                         .AddFIS(fis_str)\
                         .AddInputs(config.experimentos.dataset_entradas)\
@@ -332,13 +342,13 @@ def main(config:DataConfig):
                     # bytes = x_batch.element_size() * x_batch.nelement()  < (vramGPUbytes - pesoTotal)
                     lotes = config.experimentos.lote_size
                     hist_loss, metricas = train_nfs_batch(modelo,train_x,train_y,
-                                                          config.experimentos.epocas, 
-                                                          batch_size=lotes, 
-                                                          tolerancia=config.experimentos.tolerancia,
-                                                          shuffle=True,
-                                                          debug=False,
-                                                          fn_loss_lst=metricas_importantes,
-                                                          early_stop=early_stop)
+                                                        config.experimentos.epocas, 
+                                                        batch_size=lotes, 
+                                                        tolerancia=config.experimentos.tolerancia,
+                                                        shuffle=True,
+                                                        debug=False,
+                                                        fn_loss_lst=metricas_importantes,
+                                                        early_stop=early_stop)
                 else:                
                     hist_loss,metricas = train_nfs(modelo,train_x,train_y,
                                         config.experimentos.epocas,config.experimentos.tolerancia,

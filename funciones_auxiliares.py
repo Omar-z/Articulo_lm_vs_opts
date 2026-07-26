@@ -281,3 +281,57 @@ class DataExperimento:
 class DataConfig:
     optimizadores: list[DataOptimizador] = field(default_factory=list)
     experimentos: DataExperimento = field(default_factory=DataExperimento)
+
+
+#politicas de parar el entrenamiento (patrón estrategia)
+from typing import Protocol
+
+
+class PoliticaDeParo(Protocol):
+    def apply(self,loss_value:float, optimizador: Any)->bool:
+        ...
+    def __str__(self):
+        return f"\nSe detuvo por: {self.nombre}"
+
+class PoliticaTolerancia(PoliticaDeParo):
+    def __init__(self, tol:float=1e-8)->None:
+        self.tol = tol
+        self.nombre = "Politica de Tolerancia"
+    def apply(self, loss_value:float, optimizador: Any)->bool:        
+        return (loss_value < self.tol)
+
+class PoliticaFallos(PoliticaDeParo):
+    def __init__(self, limite:float=1e10, init:float=1e-3,inc:float=10, dec:float=0.1)->None:
+        self.limite=limite
+        self.valor_actual=init
+        self.inc = inc
+        self.dec = dec
+        self.best_loss = float('inf')
+        self.eps = 1e-12
+        self.nombre = "Politica de Fallos"
+    def apply(self, loss_value:float, optimizador:Any)->bool:
+        if(loss_value < self.best_loss-self.eps):
+            self.best_loss = loss_value
+            self.valor_actual*=self.dec
+        else:
+            self.valor_actual*=self.inc
+        return (self.valor_actual >= self.limite)
+
+class PoliticaLambdaLM(PoliticaDeParo):
+    def __init__(self):
+        self.nombre = "Politica de Fallos de Lambda LM"
+    def apply(self, loss_value:float, optimizador:Any)->bool:
+        if(getattr(optimizador,"nombre",None) != "LM"):
+            return False
+        return (optimizador.lambda_val > optimizador.lambda_max)
+
+class CompositorDePoliticas:
+    def __init__(self, politicas:list[PoliticaDeParo])->None:
+        self.politicas = politicas
+    
+    def apply(self, loss_value:float, optimizador:Any)->bool:
+        for politica in self.politicas:
+            if(politica.apply(loss_value, optimizador)):
+                print(politica)
+                return True
+        return False
