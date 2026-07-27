@@ -131,6 +131,11 @@ class SolicitudDeTrabajoDTO(BaseModel):
     forzar_float64: bool = False
     semilla_maestra: int | None = None
 
+    #Políticas de paro a aplicar, por nombre de clase y en orden de prioridad:
+    #`CompositorDePoliticas` corta con la primera que devuelve True. Vacío = las
+    #cuatro del núcleo, que es el comportamiento del CLI.
+    politicas: list[str] = Field(default_factory=list)
+
     #Solo para tipo="hiperparametros": rejilla logarítmica de learning rates.
     valores_hiperparametro: int = Field(default=40, ge=2, le=200)
     lr_max: float = Field(default=0.99, gt=0, lt=1)

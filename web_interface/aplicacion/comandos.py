@@ -48,11 +48,10 @@ class Comando(Protocol):
 
 
 def politicas_del_nucleo(config: DataConfig) -> list[PoliticaDeParo]:
-    """Prototipos de las políticas de paro, en el mismo orden que `rpipeline.py:196-206`.
+    """Prototipos por defecto: las cuatro del núcleo, en el orden de `rpipeline.py:196-206`.
 
-    NaN/Inf va primero para cortar en cuanto la corrida diverge, antes de gastar el
-    resto de las épocas. Los parámetros de `PoliticaFallos` se toman del optimizador
-    LM si está presente en la configuración, igual que hace el CLI.
+    Es el respaldo para cuando no se indica ninguna selección. La ruta habitual es
+    `ServicioDePoliticas.prototipos`, que además admite las políticas del usuario.
     """
     exp = config.experimentos
 
@@ -77,13 +76,24 @@ def politicas_del_nucleo(config: DataConfig) -> list[PoliticaDeParo]:
 
 @dataclass
 class ComandoDeExperimento:
-    """Ejecuta un barrido comparativo de optimizadores por número de reglas."""
+    """Ejecuta un barrido comparativo de optimizadores por número de reglas.
+
+    `prototipos` son las políticas de paro ya instanciadas. Se pasan construidas
+    para que el comando no tenga que saber si vienen del núcleo o las escribió el
+    usuario: `BarridoBase` las clona con `deepcopy` en cada corrida.
+    """
 
     id: str
     config: DataConfig
     fachada: FachadaANFIS
+    prototipos: list[PoliticaDeParo] | None = None
     tipo: str = "experimento"
     metadatos: dict[str, Any] = field(default_factory=dict)
+
+    def politicas(self) -> list[PoliticaDeParo]:
+        if self.prototipos is None:
+            return politicas_del_nucleo(self.config)
+        return self.prototipos
 
     def descripcion(self) -> str:
         exp = self.config.experimentos
@@ -99,7 +109,7 @@ class ComandoDeExperimento:
             fachada=self.fachada,
             sujeto=contexto.sujeto,
             cancelacion=contexto.cancelacion,
-            prototipos=politicas_del_nucleo(self.config),
+            prototipos=self.politicas(),
             id_trabajo=contexto.id_trabajo,
         )
 
@@ -114,11 +124,17 @@ class ComandoDeHiperparametros:
     id: str
     config: DataConfig
     fachada: FachadaANFIS
+    prototipos: list[PoliticaDeParo] | None = None
     valores: int = 40
     lr_max: float = 0.99
     lr_min: float = 1e-12
     tipo: str = "hiperparametros"
     metadatos: dict[str, Any] = field(default_factory=dict)
+
+    def politicas(self) -> list[PoliticaDeParo]:
+        if self.prototipos is None:
+            return politicas_del_nucleo(self.config)
+        return self.prototipos
 
     def descripcion(self) -> str:
         exp = self.config.experimentos
@@ -134,7 +150,7 @@ class ComandoDeHiperparametros:
             fachada=self.fachada,
             sujeto=contexto.sujeto,
             cancelacion=contexto.cancelacion,
-            prototipos=politicas_del_nucleo(self.config),
+            prototipos=self.politicas(),
             id_trabajo=contexto.id_trabajo,
             valores=self.valores,
             lr_max=self.lr_max,

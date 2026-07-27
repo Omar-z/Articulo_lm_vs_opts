@@ -45,10 +45,16 @@ DIR_RESULTADOS_REPO: Path = RAIZ_PROYECTO / "resultados"
 DIR_PLANTILLAS: Path = DIR_WEB / "plantillas"
 DIR_ESTATICOS: Path = DIR_WEB / "estaticos"
 DIR_PLUGINS: Path = DIR_WEB / "plugins"
+DIR_POLITICAS: Path = DIR_WEB / "politicas"
+ARCHIVO_POLITICAS: Path = DIR_POLITICAS / "politicas_usuario.py"
 
 #--- Servidor ---------------------------------------------------------------------
 HOST: str = "127.0.0.1"
 PUERTO: int = 8000
+
+#Lo fija `main.py` al arrancar. Escribir políticas desde la web es ejecutar código
+#en este proceso, así que solo se permite mientras el servidor sea local.
+EXPUESTO_EN_RED: bool = False
 
 #--- Límites ----------------------------------------------------------------------
 #Subida de datasets

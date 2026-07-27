@@ -95,7 +95,21 @@
         <input type="number" id="lote_size" min="1" value="128" placeholder="tamaño de lote" disabled>
       </div>
     </div>
-    <p class="tenue" id="proporciones-efectivas" style="margin-bottom:0"></p>
+    <p class="tenue" id="proporciones-efectivas"></p>
+
+    <div class="bloque-politicas">
+      <div class="encabezado-panel">
+        <h3>Políticas de paro</h3>
+        <a class="tenue" href="/politicas">gestionar políticas</a>
+      </div>
+      <p class="tenue" style="margin-top:-.5rem">
+        Se consultan en cada época y la primera que se cumpla detiene esa corrida,
+        así que el orden de la lista importa.
+      </p>
+      <div id="lista-politicas-constructor" class="lista-casillas">
+        <p class="tenue">Cargando…</p>
+      </div>
+    </div>
   </section>
 
   <!-- 4. Resumen ------------------------------------------------------------ -->

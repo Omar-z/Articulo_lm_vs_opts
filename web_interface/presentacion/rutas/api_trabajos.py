@@ -73,17 +73,31 @@ async def crear_trabajo(
         minilotes=solicitud.minilotes,
         forzar_float64=solicitud.forzar_float64,
     )
+    #Políticas de paro elegidas para este barrido; sin selección, las del núcleo.
+    desconocidas = [
+        p for p in solicitud.politicas if not estado.servicio_politicas.existe(p)
+    ]
+    if desconocidas:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Políticas desconocidas: {', '.join(desconocidas)}",
+        )
+    prototipos = estado.servicio_politicas.prototipos(config, solicitud.politicas)
+
     if solicitud.tipo == "hiperparametros":
         comando: Any = ComandoDeHiperparametros(
             id=nuevo_id(),
             config=config,
             fachada=fachada,
+            prototipos=prototipos,
             valores=solicitud.valores_hiperparametro,
             lr_max=solicitud.lr_max,
             lr_min=solicitud.lr_min,
         )
     else:
-        comando = ComandoDeExperimento(id=nuevo_id(), config=config, fachada=fachada)
+        comando = ComandoDeExperimento(
+            id=nuevo_id(), config=config, fachada=fachada, prototipos=prototipos
+        )
 
     trabajo = estado.gestor.encolar(
         comando,
@@ -91,6 +105,7 @@ async def crear_trabajo(
             "dispositivo": dispositivo,
             "minilotes": solicitud.minilotes,
             "config": config_dto.model_dump(),
+            "politicas": [getattr(p, "nombre", type(p).__name__) for p in prototipos],
             "avisos": avisos,
         },
     )

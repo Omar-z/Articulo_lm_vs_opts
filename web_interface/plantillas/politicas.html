@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<h1>Políticas de paro</h1>
+<p class="subtitulo">
+  Una política decide, en cada época, si el entrenamiento debe detenerse. Aquí
+  puedes escribir las tuyas: se guardan en un archivo Python que también puedes
+  editar a mano y recargar.
+</p>
+
+<div class="aviso" id="aviso-seguridad">
+  El código que escribas aquí <strong>se ejecuta en el proceso del servidor</strong>.
+  Por eso solo se puede editar con el servidor en <code>localhost</code>.
+</div>
+
+<section class="panel">
+  <div class="encabezado-panel">
+    <h2>Nueva política</h2>
+    <div class="control-en-linea">
+      <button id="btn-recargar">Recargar del archivo</button>
+    </div>
+  </div>
+
+  <div class="campo">
+    <label for="nombre-politica">Nombre de la política</label>
+    <input type="text" id="nombre-politica" placeholder="Politica Promedio Tolerancia"
+           autocomplete="off">
+    <p class="tenue" id="pista-clase">
+      La clase se llamará <code>MiPolitica</code>.
+    </p>
+  </div>
+
+  <div class="campo" style="margin-top:.7rem">
+    <label for="codigo-politica">Implementación</label>
+    <textarea id="codigo-politica" class="editor-codigo" rows="16" spellcheck="false"
+              autocomplete="off" autocapitalize="off"></textarea>
+    <p class="tenue">
+      <code>apply</code> se llama una vez por época y recibe la pérdida ya
+      convertida a <code>float</code>. Devuelve <code>True</code> para detener la
+      corrida. Tienes disponibles <code>np</code>, <code>torch</code> y
+      <code>Any</code>.
+    </p>
+  </div>
+
+  <div id="resultado-politica"></div>
+
+  <div class="acciones">
+    <button id="btn-validar">Validar y probar</button>
+    <button id="btn-guardar" class="primario">Guardar política</button>
+    <button id="btn-limpiar">Empezar de nuevo</button>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Políticas disponibles <span class="tenue" id="cuenta-politicas"></span></h2>
+  <p class="tenue" style="margin-top:-.4rem">
+    Las del núcleo vienen del proyecto y no se editan aquí. Las tuyas se pueden
+    modificar o borrar, y todas se pueden elegir al lanzar un experimento.
+  </p>
+  <div id="lista-politicas" class="rejilla-catalogo">
+    <p class="vacio">Cargando…</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="encabezado-panel">
+    <h2>Archivo completo</h2>
+    <span class="tenue mono" id="ruta-archivo"></span>
+  </div>
+  <pre class="bitacora" id="archivo-politicas" style="max-height:340px">…</pre>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ estatico('js/politicas.js') }}"></script>
+{% endblock %}

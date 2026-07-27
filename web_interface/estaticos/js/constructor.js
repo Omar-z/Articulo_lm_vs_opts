@@ -42,12 +42,16 @@ class ConstructorDeExperimento {
   /* --- carga inicial ---------------------------------------------------- */
 
   async cargarCatalogos() {
-    const [datasets, optimizadores, perdidas, dispositivos] = await Promise.all([
-      ClienteAPI.obtener("/api/datasets").catch(() => []),
-      ClienteAPI.obtener("/api/optimizadores").catch(() => ({ optimizadores: [] })),
-      ClienteAPI.obtener("/api/funciones-perdida").catch(() => ["SSE"]),
-      ClienteAPI.obtener("/api/dispositivos").catch(() => []),
-    ]);
+    const [datasets, optimizadores, perdidas, dispositivos, politicas] =
+      await Promise.all([
+        ClienteAPI.obtener("/api/datasets").catch(() => []),
+        ClienteAPI.obtener("/api/optimizadores").catch(() => ({ optimizadores: [] })),
+        ClienteAPI.obtener("/api/funciones-perdida").catch(() => ["SSE"]),
+        ClienteAPI.obtener("/api/dispositivos").catch(() => []),
+        ClienteAPI.obtener("/api/politicas").catch(() => ({ politicas: [] })),
+      ]);
+
+    this.pintarPoliticas(politicas.politicas || []);
 
     this.datasets = datasets;
     this.el.dataset.innerHTML =
@@ -88,6 +92,30 @@ class ConstructorDeExperimento {
       await this.alElegirDataset();
     }
     this.actualizarResumen();
+  }
+
+  /* --- políticas de paro ------------------------------------------------- */
+
+  pintarPoliticas(politicas) {
+    const caja = document.getElementById("lista-politicas-constructor");
+    if (!caja) return;
+    if (!politicas.length) {
+      caja.innerHTML = "<p class='tenue'>No hay políticas disponibles.</p>";
+      return;
+    }
+    /* Las del núcleo van marcadas por defecto: es el comportamiento del CLI. */
+    caja.innerHTML = politicas.map((p) =>
+      "<label class='casilla'>" +
+      "<input type='checkbox' data-politica='" + escaparHTML(p.nombre_clase) + "'" +
+      (p.origen === "nucleo" ? " checked" : "") + ">" +
+      "<span>" + escaparHTML(p.etiqueta) +
+      "<span class='tenue'> · " + (p.origen === "nucleo" ? "del proyecto" : "tuya") +
+      "</span></span></label>").join("");
+  }
+
+  politicasElegidas() {
+    return [...document.querySelectorAll("[data-politica]:checked")]
+      .map((c) => c.dataset.politica);
   }
 
   /* --- dataset ---------------------------------------------------------- */
@@ -271,6 +299,7 @@ class ConstructorDeExperimento {
       dispositivo: document.getElementById("dispositivo").value || "cpu",
       minilotes: document.getElementById("minilotes").checked,
       semilla_maestra: this.numero("semilla"),
+      politicas: this.politicasElegidas(),
     };
   }
 

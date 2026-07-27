@@ -26,6 +26,7 @@ from web_interface.aplicacion.fachada_anfis import FachadaANFIS
 from web_interface.aplicacion.gestor_trabajos import GestorDeTrabajos
 from web_interface.aplicacion.servicio_datasets import ServicioDeDatasets
 from web_interface.aplicacion.servicio_optimizadores import ServicioDeOptimizadores
+from web_interface.aplicacion.servicio_politicas import ServicioDePoliticas
 from web_interface.configuracion import (
     DIR_ESTATICOS,
     DIR_HIPERPARAMETROS,
@@ -35,6 +36,7 @@ from web_interface.infraestructura.cargadores import FabricaDeCargadores
 from web_interface.infraestructura.editor_fis import EditorDeFIS
 from web_interface.infraestructura.repositorio_datasets import RepositorioDeDatasets
 from web_interface.infraestructura.repositorio_plugins import RepositorioDePlugins
+from web_interface.infraestructura.repositorio_politicas import RepositorioDePoliticas
 from web_interface.infraestructura.registros import (
     crear_registro_optimizadores,
     crear_registro_perdidas,
@@ -57,6 +59,7 @@ from web_interface.presentacion.rutas import (
     api_datasets,
     api_experimentos,
     api_optimizadores,
+    api_politicas,
     api_resultados,
     api_trabajos,
     paginas,
@@ -101,6 +104,12 @@ async def ciclo_de_vida(app: FastAPI):
         app.state.registro_optimizadores, RepositorioDePlugins()
     )
     app.state.servicio_optimizadores.recargar_plugins()
+
+    #Políticas de paro: las del núcleo más las que escriba el usuario. Solo se
+    #pueden editar mientras el servidor sea local (ver repositorio_politicas).
+    app.state.servicio_politicas = ServicioDePoliticas(
+        RepositorioDePoliticas(permitir_escritura=not configuracion.EXPUESTO_EN_RED)
+    )
 
     #Repositorios
     app.state.repositorio_datasets = RepositorioDeDatasets()
@@ -186,6 +195,7 @@ def crear_app() -> FastAPI:
 
     app.include_router(paginas.router)
     app.include_router(api_optimizadores.router)
+    app.include_router(api_politicas.router)
     app.include_router(api_datasets.router)
     app.include_router(api_trabajos.router)
     app.include_router(api_experimentos.router)

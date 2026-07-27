@@ -477,3 +477,38 @@ textarea { width: 100%; font-family: var(--mono); font-size: .82rem; resize: ver
 @media (prefers-reduced-motion: reduce) {
   .tarjeta-optimizador.recien-agregada { animation: none; }
 }
+
+/* --- Editor de código de las políticas ------------------------------------ */
+.editor-codigo {
+  font-family: var(--mono);
+  font-size: .82rem;
+  line-height: 1.5;
+  tab-size: 4;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  min-height: 260px;
+}
+
+/* --- Selección de políticas en el constructor ----------------------------- */
+.bloque-politicas {
+  margin-top: 1.1rem;
+  padding-top: .9rem;
+  border-top: 1px solid var(--borde);
+}
+.bloque-politicas h3 { font-size: 1rem; margin: 0; }
+.lista-casillas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: .35rem .9rem;
+}
+.casilla {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  font-size: .87rem;
+  color: var(--texto);
+  cursor: pointer;
+  padding: .2rem 0;
+}
+.casilla input { width: auto; }

@@ -117,9 +117,23 @@ async def constructor(request: Request) -> HTMLResponse:
     )
 
 
+@router.get("/politicas", response_class=HTMLResponse)
+async def politicas(request: Request) -> HTMLResponse:
+    """Catálogo y editor de políticas de paro."""
+    return plantillas.TemplateResponse(
+        request,
+        "politicas.html",
+        {"titulo": "Políticas de paro", "seccion": "politicas"},
+    )
+
+
 @router.get("/hiperparametros", response_class=HTMLResponse)
 async def hiperparametros(request: Request) -> HTMLResponse:
-    """Barrido de learning rate por optimizador y número de reglas."""
+    """Barrido de learning rate por optimizador y número de reglas.
+
+    Ya no está en la navegación —su sitio lo ocupa Políticas—, pero sigue
+    accesible por URL y el barrido funciona.
+    """
     return plantillas.TemplateResponse(
         request,
         "hiperparametros.html",

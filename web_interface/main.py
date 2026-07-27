@@ -53,10 +53,13 @@ def main() -> None:
 
     host = "0.0.0.0" if args.exponer else HOST
     if args.exponer:
+        #Con el servidor abierto a la red se desactiva la edición de políticas:
+        #escribirlas equivale a ejecutar código en este proceso.
+        configuracion.EXPUESTO_EN_RED = True
         print(
             "\033[1;31m[AVISO] El servidor queda accesible desde la red. "
-            "Los archivos de plugins/ se ejecutan con los permisos de este "
-            "proceso.\033[0m"
+            "La edición de políticas queda desactivada, y los archivos de "
+            "plugins/ se ejecutan con los permisos de este proceso.\033[0m"
         )
 
     print(f"Laboratorio ANFIS en http://{host}:{args.puerto}  ({hilos} hilos de torch)")
