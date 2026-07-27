@@ -127,15 +127,42 @@ class HistorialDeEventos:
             return [e for e in self._eventos if e.secuencia > secuencia][:limite]
 
     def curvas(self, max_puntos: int = 500) -> dict[str, dict[str, list[float]]]:
-        """Todas las series submuestreadas, para el snapshot inicial del WebSocket."""
+        """Todas las series submuestreadas.
+
+        Con un barrido completo esto son cientos de series: úsese solo cuando de
+        verdad se quieran todas de golpe. El monitor las pide por lotes con
+        `curvas_de` para poder mostrar progreso mientras carga.
+        """
         with self._cerrojo:
-            return {
-                clave: {
-                    "epocas": submuestrear(datos["epocas"], max_puntos),
-                    "loss": submuestrear(datos["loss"], max_puntos),
-                }
-                for clave, datos in self._curvas.items()
+            claves = list(self._curvas)
+        return self.curvas_de(claves, max_puntos)
+
+    def curvas_de(
+        self, claves: list[str], max_puntos: int = 500
+    ) -> dict[str, dict[str, list[float]]]:
+        """Solo las series pedidas, submuestreadas."""
+        with self._cerrojo:
+            seleccion = {c: self._curvas[c] for c in claves if c in self._curvas}
+        return {
+            clave: {
+                "epocas": submuestrear(datos["epocas"], max_puntos),
+                "loss": submuestrear(datos["loss"], max_puntos),
             }
+            for clave, datos in seleccion.items()
+        }
+
+    def claves_de_curvas(self) -> list[dict[str, Any]]:
+        """Inventario ligero de las series: qué hay y cuánto ocupa cada una.
+
+        Es lo que permite al navegador dibujar una barra de progreso real en vez
+        de un indicador indeterminado: sabe cuántas series va a recibir antes de
+        empezar a pedirlas.
+        """
+        with self._cerrojo:
+            return [
+                {"clave": clave, "puntos": len(datos["loss"])}
+                for clave, datos in self._curvas.items()
+            ]
 
     def curva(self, clave: str, max_puntos: int = 500) -> dict[str, list[float]]:
         with self._cerrojo:

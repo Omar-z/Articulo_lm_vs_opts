@@ -43,6 +43,9 @@ class Historial {
   }
 
   async cargar(origen) {
+    const carga = new IndicadorDeCarga("Cargando el historial");
+    carga.fase("Leyendo los experimentos guardados…");
+    carga.progreso(0, 0);
     try {
       const ruta = "/api/resultados" + (origen ? "?origen=" + origen : "");
       this.pintar(await ClienteAPI.obtener(ruta));
@@ -50,6 +53,8 @@ class Historial {
       this.cuerpo.innerHTML =
         "<tr><td colspan='7' class='vacio'>No se pudo cargar: " +
         escaparHTML(error.message) + "</td></tr>";
+    } finally {
+      carga.cerrar();
     }
   }
 

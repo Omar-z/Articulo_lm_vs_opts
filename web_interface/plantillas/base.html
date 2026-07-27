@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titulo %}{{ titulo|default("Laboratorio ANFIS") }}{% endblock %}</title>
-  <link rel="stylesheet" href="/estaticos/css/estilos.css">
+  <link rel="stylesheet" href="{{ estatico('css/estilos.css') }}">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>&#129504;</text></svg>">
   {% block cabecera %}{% endblock %}
 </head>
@@ -32,7 +32,8 @@
     <span id="estado-servidor" class="etiqueta-estado">comprobando…</span>
   </footer>
 
-  <script src="/estaticos/js/api.js"></script>
+  <script src="{{ estatico('js/api.js') }}"></script>
+  <script src="{{ estatico('js/cargando.js') }}"></script>
   <script>
     ClienteAPI.obtener("/api/salud").then(function (s) {
       var el = document.getElementById("estado-servidor");

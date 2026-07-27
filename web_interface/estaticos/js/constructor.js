@@ -73,9 +73,12 @@ class ConstructorDeExperimento {
       (d.compatible ? "" : " — " + escaparHTML(d.motivo || "no compatible")) +
       "</option>").join("");
 
-    /* Arranque cómodo: LM frente a Adam es la comparación de referencia. */
+    /* Arranque cómodo: LM frente a Adam es la comparación de referencia. Estos no
+       avisan, porque no los ha pedido el usuario. */
     ["LM", "Adam"].forEach((n) => {
-      if (this.optimizadores.some((o) => o.nombre === n)) this.agregarOptimizador(n);
+      if (this.optimizadores.some((o) => o.nombre === n)) {
+        this.agregarOptimizador(n, true);
+      }
     });
 
     /* /datasets?dataset=<id> preselecciona */
@@ -143,11 +146,12 @@ class ConstructorDeExperimento {
 
   /* --- optimizadores ---------------------------------------------------- */
 
-  agregarOptimizador(nombreForzado) {
+  agregarOptimizador(nombreForzado, silencioso) {
     const nombre = nombreForzado || this.el.selector.value;
     if (!nombre) return;
     if (this.seleccionados.some((s) => s.nombre === nombre)) {
-      alert("El optimizador '" + nombre + "' ya está en la lista.");
+      Avisos.error("<strong>" + escaparHTML(nombre) +
+        "</strong> ya está en el experimento.");
       return;
     }
     const descriptor = this.optimizadores.find((o) => o.nombre === nombre);
@@ -185,10 +189,23 @@ class ConstructorDeExperimento {
       if (!this.seleccionados.length) {
         this.el.lista.innerHTML = "<p class='vacio'>Añade al menos un optimizador.</p>";
       }
+      Avisos.mostrar("<strong>" + escaparHTML(nombre) +
+        "</strong> se quitó del experimento.", "info");
       this.actualizarResumen();
     });
 
     this.actualizarResumen();
+
+    if (!silencioso) {
+      /* Confirmación efímera: la tarjeta puede quedar fuera de la vista y sin
+         esto no queda claro que el botón haya hecho algo. */
+      Avisos.exito(
+        "<strong>" + escaparHTML(nombre) + "</strong> añadido al experimento" +
+        " · ahora son " + this.seleccionados.length + " optimizador(es)");
+      tarjeta.classList.add("recien-agregada");
+      tarjeta.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      setTimeout(() => tarjeta.classList.remove("recien-agregada"), 1400);
+    }
   }
 
   /* --- construcción del objeto ------------------------------------------ */

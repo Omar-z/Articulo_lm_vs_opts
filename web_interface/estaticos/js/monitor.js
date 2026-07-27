@@ -103,7 +103,7 @@ class MonitorDeTrabajo {
 
   /* --- pintado ---------------------------------------------------------- */
 
-  aplicarSnapshot(snapshot) {
+  async aplicarSnapshot(snapshot) {
     const trabajo = snapshot.trabajo;
     this.ultimaSecuencia = snapshot.secuencia || 0;
 
@@ -116,19 +116,65 @@ class MonitorDeTrabajo {
     this.actualizarEstado(trabajo);
     this.fijarGlobal(trabajo.fraccion);
 
-    this.grafica.limpiar();
-    Object.keys(snapshot.curvas || {}).forEach((clave) => {
-      const curva = snapshot.curvas[clave];
-      this.grafica.fijarSerie(clave, curva.epocas, curva.loss, this.etiquetaDe(clave), false);
-    });
-    this.grafica.refrescar();
-
     this.corridas = snapshot.corridas_terminadas || [];
     this.pintarCorridas();
 
     if (snapshot.bitacora && snapshot.bitacora.length) {
       this.el.bitacora.textContent = snapshot.bitacora.join("\n");
       this.el.bitacora.scrollTop = this.el.bitacora.scrollHeight;
+    }
+
+    await this.cargarCurvas(snapshot.claves_curvas || []);
+  }
+
+  /* Las curvas llegan por lotes, no dentro del snapshot: en un barrido completo
+     son cientos de series y varios MB. Así la página se ve enseguida y la barra
+     de progreso indica algo real. */
+  async cargarCurvas(inventario) {
+    this.grafica.limpiar();
+    if (!inventario.length) return;
+
+    /* Los eventos que lleguen mientras se cargan se aplican al final, para que
+       un lote tardío no borre los puntos recién recibidos en vivo. */
+    this.pendientes = [];
+    this.cargandoCurvas = true;
+
+    const carga = new IndicadorDeCarga("Cargando el experimento");
+    carga.fase("Recuperando curvas de entrenamiento…");
+    carga.progreso(0, inventario.length, "curvas");
+
+    const TAMANO_LOTE = 25;
+    let hechas = 0;
+
+    try {
+      for (let i = 0; i < inventario.length; i += TAMANO_LOTE) {
+        const lote = inventario.slice(i, i + TAMANO_LOTE).map((c) => c.clave);
+        const datos = await ClienteAPI.obtener(
+          "/api/trabajos/" + this.idTrabajo + "/curvas?claves=" +
+          encodeURIComponent(lote.join(","))
+        );
+        Object.keys(datos.curvas).forEach((clave) => {
+          const curva = datos.curvas[clave];
+          this.grafica.fijarSerie(
+            clave, curva.epocas, curva.loss, this.etiquetaDe(clave), false);
+        });
+        hechas += lote.length;
+        carga.progreso(hechas, inventario.length, "curvas");
+        /* Se cede el hilo para que la barra se repinte de verdad. */
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      carga.fase("Dibujando la gráfica…");
+      this.grafica.refrescar();
+    } catch (error) {
+      carga.error("No se pudieron cargar todas las curvas: " + error.message);
+      await new Promise((r) => setTimeout(r, 1500));
+    } finally {
+      carga.cerrar();
+      this.cargandoCurvas = false;
+      const encolados = this.pendientes || [];
+      this.pendientes = null;
+      encolados.forEach((evento) => this.aplicarEvento(evento));
+      this.grafica.refrescar();
     }
   }
 
@@ -137,6 +183,13 @@ class MonitorDeTrabajo {
       /* Los eventos que ya se aplicaron (tras un replay) se ignoran. */
       if (evento.secuencia <= this.ultimaSecuencia) return;
       this.ultimaSecuencia = evento.secuencia;
+    }
+
+    /* Durante la carga por lotes se encolan: aplicarlos ahora los perdería, porque
+       cada lote reemplaza la serie entera. */
+    if (this.cargandoCurvas && this.pendientes) {
+      this.pendientes.push(evento);
+      return;
     }
 
     switch (evento.tipo) {

@@ -92,13 +92,21 @@ async def _escuchar(websocket: WebSocket, trabajo: Any, gestor: Any) -> None:
 
 
 def _snapshot(trabajo: Any, gestor: Any, final: bool = False) -> dict[str, Any]:
-    """Estado completo del trabajo, suficiente para pintar el monitor desde cero."""
+    """Estado del trabajo, suficiente para pintar el monitor desde cero.
+
+    **No incluye las curvas.** En un barrido completo (8 reglas × 6 optimizadores
+    × 5 corridas) son 240 series de hasta 500 puntos: unos 2,7 MB que el servidor
+    tendría que serializar de golpe y el navegador esperar enteros antes de
+    mostrar nada. En su lugar se manda el inventario (`claves_curvas`) y el
+    cliente las pide por lotes a `/api/trabajos/{id}/curvas`, con lo que la página
+    aparece de inmediato y la barra de progreso refleja algo real.
+    """
     return {
         "tipo": "snapshot",
         "final": final,
         "trabajo": trabajo.a_dict(),
         "secuencia": trabajo.historial.ultima_secuencia,
-        "curvas": trabajo.historial.curvas(MAX_PUNTOS_CURVA),
+        "claves_curvas": trabajo.historial.claves_de_curvas(),
         "corridas_terminadas": trabajo.historial.corridas_terminadas(),
         "bitacora": gestor.bitacora(trabajo.id, 200),
     }

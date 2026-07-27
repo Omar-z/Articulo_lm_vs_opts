@@ -72,7 +72,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/estaticos/js/vendor/chart.umd.min.js"></script>
-<script src="/estaticos/js/graficas.js"></script>
-<script src="/estaticos/js/monitor.js"></script>
+<script src="{{ estatico('js/vendor/chart.umd.min.js') }}"></script>
+<script src="{{ estatico('js/graficas.js') }}"></script>
+<script src="{{ estatico('js/monitor.js') }}"></script>
 {% endblock %}

@@ -54,8 +54,8 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/estaticos/js/vendor/chart.umd.min.js"></script>
-<script src="/estaticos/js/graficas.js"></script>
+<script src="{{ estatico('js/vendor/chart.umd.min.js') }}"></script>
+<script src="{{ estatico('js/graficas.js') }}"></script>
 <script>
 class DetalleDeResultado {
   constructor(raiz) {
@@ -75,12 +75,18 @@ class DetalleDeResultado {
   }
 
   async cargar() {
+    const carga = new IndicadorDeCarga("Cargando el experimento");
+    carga.fase("Leyendo el resumen de resultados…");
+    carga.progreso(0, 0);
+
     let resumen;
     try {
       resumen = await ClienteAPI.obtener(this.base);
     } catch (error) {
+      carga.error("No se pudo cargar: " + error.message);
       document.getElementById("titulo-experimento").textContent =
         "No se pudo cargar: " + error.message;
+      setTimeout(() => carga.cerrar(), 2500);
       return;
     }
 
@@ -106,8 +112,17 @@ class DetalleDeResultado {
     const inicial = metricas.includes(preferida) ? preferida : metricas[0];
     if (inicial) { selector.value = inicial; this.pintarComparativa(inicial); }
 
+    carga.fase("Armando la tabla comparativa…");
+    carga.progreso(1, 2);
+    await new Promise((r) => setTimeout(r, 0));
     this.pintarTabla();
-    if (this.origen === "repo") this.cargarGraficas();
+
+    if (this.origen === "repo") {
+      carga.fase("Buscando las gráficas del script…");
+      carga.progreso(2, 2);
+      await this.cargarGraficas();
+    }
+    carga.cerrar();
   }
 
   pintarComparativa(metrica) {

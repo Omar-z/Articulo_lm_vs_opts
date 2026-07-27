@@ -203,6 +203,26 @@ async def bitacora_del_trabajo(
     return {"lineas": gestor.bitacora(id_trabajo, ultimas)}
 
 
+@router.get("/{id_trabajo}/curvas")
+async def curvas_del_trabajo(
+    id_trabajo: str,
+    request: Request,
+    claves: str = "",
+    puntos: int = MAX_PUNTOS_CURVA,
+) -> dict[str, Any]:
+    """Varias curvas de una vez, para que el monitor las cargue por lotes.
+
+    `claves` es una lista separada por comas con la forma
+    ``optimizador|regla|corrida``. Sin ella se devuelven todas, que es justo lo
+    que conviene evitar en un barrido grande.
+    """
+    trabajo = _buscar(request, id_trabajo)
+    lista = [c for c in claves.split(",") if c] if claves else [
+        c["clave"] for c in trabajo.historial.claves_de_curvas()
+    ]
+    return {"curvas": trabajo.historial.curvas_de(lista, puntos)}
+
+
 @router.get("/{id_trabajo}/curva")
 async def curva_del_trabajo(
     id_trabajo: str,

@@ -4,9 +4,25 @@ from __future__ import annotations
 
 from fastapi.templating import Jinja2Templates
 
-from web_interface.configuracion import DIR_PLANTILLAS
+from web_interface.configuracion import DIR_ESTATICOS, DIR_PLANTILLAS
 
 plantillas = Jinja2Templates(directory=str(DIR_PLANTILLAS))
+
+
+def url_estatico(ruta: str) -> str:
+    """URL de un archivo estático con la marca de tiempo del archivo.
+
+    Sin esto el navegador conserva la copia cacheada del CSS o del JS aunque el
+    archivo haya cambiado, y las modificaciones parecen no surtir efecto: cuesta
+    mucho tiempo de depuración descubrir que el código estaba bien y el navegador
+    servía la versión vieja.
+    """
+    archivo = DIR_ESTATICOS / ruta
+    try:
+        version = int(archivo.stat().st_mtime)
+    except OSError:
+        version = 0
+    return f"/estaticos/{ruta}?v={version}"
 
 
 def formato_bytes(n: int | float | None) -> str:
@@ -40,3 +56,4 @@ def formato_duracion(segundos: float | None) -> str:
 
 plantillas.env.filters["bytes"] = formato_bytes
 plantillas.env.filters["duracion"] = formato_duracion
+plantillas.env.globals["estatico"] = url_estatico
