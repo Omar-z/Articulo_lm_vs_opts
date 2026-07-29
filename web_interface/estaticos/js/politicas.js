@@ -189,7 +189,15 @@ class EditorDePoliticas {
     try {
       const datos = await ClienteAPI.obtener("/api/politicas");
       this.pintar(datos);
-      this.el.ruta.textContent = datos.archivo;
+      
+      var sp = datos.archivo.split("/");
+      var spt="";
+      for(var i=6;i<sp.length;i++)
+      {
+          spt+="/"+sp[i];
+      }
+      //this.el.ruta.textContent = spt;
+      
 
       if (!datos.escritura_permitida) {
         this.el.avisoSeguridad.className = "aviso error";
@@ -201,8 +209,8 @@ class EditorDePoliticas {
         });
       }
 
-      const archivo = await fetch("/api/politicas/archivo").then((r) => r.text());
-      this.el.archivo.textContent = archivo || "(el archivo está vacío)";
+      //const archivo = await fetch("/api/politicas/archivo").then((r) => r.text());
+      //this.el.archivo.textContent = archivo || "(el archivo está vacío)";
     } catch (error) {
       this.el.lista.innerHTML =
         "<p class='vacio'>No se pudo cargar: " + escaparHTML(error.message) + "</p>";
@@ -225,7 +233,7 @@ class EditorDePoliticas {
 
     this.el.lista.innerHTML = politicas.map((p, i) => {
       const insignia = p.origen === "nucleo" ? "pendiente" : "terminado";
-      const etiqueta = p.origen === "nucleo" ? "del proyecto" : "tuya";
+      const etiqueta = p.origen === "nucleo" ? "default" : "custom";
       const params = p.parametros.length
         ? "<ul class='hiperlista'>" + p.parametros.map((par) =>
             "<li><code>" + escaparHTML(par.nombre) + "</code>" +

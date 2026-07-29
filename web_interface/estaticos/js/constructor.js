@@ -107,9 +107,9 @@ class ConstructorDeExperimento {
     caja.innerHTML = politicas.map((p) =>
       "<label class='casilla'>" +
       "<input type='checkbox' data-politica='" + escaparHTML(p.nombre_clase) + "'" +
-      (p.origen === "nucleo" ? " checked" : "") + ">" +
-      "<span>" + escaparHTML(p.etiqueta) +
-      "<span class='tenue'> · " + (p.origen === "nucleo" ? "del proyecto" : "tuya") +
+      (p.origen === "nucleo" ? " checked" : "") + ">"+
+      "<span>" + escaparHTML(p.etiqueta) + " "+
+      "<span class='insignia'>" + (p.origen === "nucleo" ? "proyecto" : "custom") +
       "</span></span></label>").join("");
   }
 

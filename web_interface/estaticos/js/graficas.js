@@ -66,7 +66,7 @@ class GraficaDeCurvas {
                       text: nombre,
                       fillStyle: conjunto.borderColor,
                       strokeStyle: conjunto.borderColor,
-                      lineWidth: 2,
+                      lineWidth: 1,
                       hidden: false,
                       datasetIndex: undefined,
                       grupo: nombre,
@@ -103,7 +103,7 @@ class GraficaDeCurvas {
   static colores() {
     const raiz = getComputedStyle(document.documentElement);
     return {
-      texto: raiz.getPropertyValue("--texto").trim() || "#e6e8ee",
+      texto: raiz.getPropertyValue("--texto").trim() || "#fadcfa",//"#e6e8ee",
       tenue: raiz.getPropertyValue("--texto-tenue").trim() || "#9aa1b1",
       rejilla: raiz.getPropertyValue("--borde").trim() || "#2a2f3d",
     };
