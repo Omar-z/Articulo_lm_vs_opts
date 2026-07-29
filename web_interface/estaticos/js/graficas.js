@@ -56,8 +56,19 @@ class GraficaDeCurvas {
               boxWidth: 12,
               font: { size: 11 },
               /* Una entrada por optimizador, no por corrida: con 3 optimizadores
-                 × 4 reglas × 3 corridas la leyenda taparía la gráfica. */
+                 × 4 reglas × 3 corridas la leyenda taparía la gráfica.
+
+                 `fontColor` es obligatorio aquí: Chart.js pinta el texto con
+                 `ctx.fillStyle = legendItem.fontColor`, y `labels.color` solo lo
+                 aplica su `generateLabels` por defecto. Al sustituirlo, sin esta
+                 propiedad el color queda sin definir y el canvas lo dibuja en
+                 negro, ilegible sobre el tema oscuro.
+
+                 Se lee del CSS en cada llamada, no del valor capturado al crear
+                 la gráfica, para que siga el tema si el sistema cambia de claro
+                 a oscuro con la página abierta. */
               generateLabels: (gr) => {
+                const colorTexto = estilo.texto;
                 const vistos = new Map();
                 gr.data.datasets.forEach((conjunto) => {
                   const nombre = (conjunto.label || "").split(" · ")[0];
@@ -66,6 +77,7 @@ class GraficaDeCurvas {
                       text: nombre,
                       fillStyle: conjunto.borderColor,
                       strokeStyle: conjunto.borderColor,
+                      fontColor: colorTexto,
                       lineWidth: 1,
                       hidden: false,
                       datasetIndex: undefined,
@@ -103,7 +115,7 @@ class GraficaDeCurvas {
   static colores() {
     const raiz = getComputedStyle(document.documentElement);
     return {
-      texto: raiz.getPropertyValue("--texto").trim() || "#fadcfa",//"#e6e8ee",
+      texto: raiz.getPropertyValue("--texto").trim() || "#f4c0f4",//"#e6e8ee",
       tenue: raiz.getPropertyValue("--texto-tenue").trim() || "#9aa1b1",
       rejilla: raiz.getPropertyValue("--borde").trim() || "#2a2f3d",
     };
