@@ -26,6 +26,7 @@
   --insignia-cancelado : var(--aviso); 
   --insignia-fallido   : var(--error); 
   --etiqueta-estado: var(--ok);
+  --hiperlista-code: var(--acento);
 }
 
 [modo-color="claro"]{
@@ -56,6 +57,7 @@
   --insignia-cancelado : #ffc94a; 
   --insignia-fallido   : #8e0000;
   --etiqueta-estado: #000000;
+  --hiperlista-code: var(--ok);
 }
 
 
@@ -392,7 +394,7 @@ textarea { width: 100%; font-family: var(--mono); font-size: .82rem; resize: ver
   margin-bottom: .4rem;
 }
 .hiperlista { margin: .4rem 0 0; padding-left: 1.1rem; font-size: .82rem; }
-.hiperlista code { color: var(--acento); }
+.hiperlista code { color: var(--hiperlista-code); }
 
 /* --- Subida de archivos --------------------------------------------------- */
 .zona-subida {
