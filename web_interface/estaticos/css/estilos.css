@@ -2,9 +2,15 @@
    Sin dependencias externas: ni fuentes remotas ni frameworks. */
 
 :root {
+  --radio: 10px;
+  --sombra: 0 1px 3px rgba(0, 0, 0, .4);
+  --mono:"JetBrains Mono", monospace;
+}
+
+[modo-color="oscuro"]{
   --fondo: #0f1117;
-  --fondo-panel: #171a23;
-  --fondo-panel-alto: #1e2230;
+  --fondo-panel:#171a23;
+  --fondo-panel-alto: #1e2230; /*panel dentro de panel*/
   --borde: #2a2f3d;
   --texto: #e6e8ee;
   --texto-tenue: #9aa1b1;
@@ -13,24 +19,46 @@
   --ok: #4ec9a0;
   --aviso: #e3b341;
   --error: #f2687a;
-  --radio: 10px;
-  --sombra: 0 1px 3px rgba(0, 0, 0, .4);
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --insignia-pendiente: var(--texto-tenue);
+  --insignia-ejecutando: var(--acento);
+  --insignia-cancelando: var(--aviso); 
+  --insignia-terminado : var(--ok); 
+  --insignia-cancelado : var(--aviso); 
+  --insignia-fallido   : var(--error); 
+  --etiqueta-estado: var(--ok);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --fondo: #f6f7fa;
-    --fondo-panel: #ffffff;
-    --fondo-panel-alto: #f0f2f7;
-    --borde: #d9dde7;
-    --texto: #1b1f2a;
-    --texto-tenue: #5f6878;
-    --acento: #2f6fe0;
-    --acento-suave: #e4edfd;
-    --sombra: 0 1px 3px rgba(20, 25, 40, .1);
-  }
+[modo-color="claro"]{
+  --verdeUABC: #00723F;
+  --verdeUABC2: #005B32;
+  --verdeUABC3: #00894C;
+  --amarilloUABC: #DD971A;
+  --amarilloUABC2: #B08208;
+  --verdecomprojo: #720600;
+  --verdecompazul: #72006C;
+  --verdecompazul2: #3F0072; 
+  --azulUABC: #20419A;
+  --fondo: #D1ffea;
+  --fondo-panel:var(--verdeUABC2); 
+  --fondo-panel-alto: var(--verdeUABC); /*panel dentro de panel*/
+  --borde: #2a2f3d;
+  --texto: var(--verdecompazul2);
+  --texto-tenue: var(--amarilloUABC);/*#7b87a2;*/
+  --acento: var(--amarilloUABC);
+  --acento-suave: var(--verdecomprojo);
+  --ok: #eebcc5;
+  --aviso: #ffc94a;
+  --error: #8e0000;
+  --insignia-pendiente: #c6dd1a;
+  --insignia-ejecutando: #00ffff;
+  --insignia-cancelando: #ffc94a; 
+  --insignia-terminado : #eebcc5; 
+  --insignia-cancelado : #ffc94a; 
+  --insignia-fallido   : #8e0000;
+  --etiqueta-estado: #000000;
 }
+
+
 
 * { box-sizing: border-box; }
 
@@ -93,7 +121,7 @@ code, pre, .mono { font-family: var(--mono); font-size: .89em; }
   color: var(--texto-tenue);
   font-size: .82rem;
 }
-.etiqueta-estado.ok { color: var(--ok); }
+.etiqueta-estado.ok { color: var(--etiqueta-estado); }
 
 h1 { font-size: 1.7rem; margin: 0 0 .4rem; }
 h2 { font-size: 1.15rem; margin: 0 0 .35rem; }
@@ -178,12 +206,14 @@ td.num, th.num { text-align: right; font-family: var(--mono); }
   font-size: .78rem;
   border: 1px solid currentColor;
 }
-.insignia.pendiente   { color: var(--texto-tenue); }
-.insignia.ejecutando  { color: var(--acento); }
-.insignia.cancelando  { color: var(--aviso); }
-.insignia.terminado   { color: var(--ok); }
-.insignia.cancelado   { color: var(--aviso); }
-.insignia.fallido     { color: var(--error); }
+
+
+.insignia.pendiente   { color: var(--insignia-pendiente); }
+.insignia.ejecutando  { color: var(--insignia-ejecutando); }
+.insignia.cancelando  { color: var(--insignia-cancelando); }
+.insignia.terminado   { color: var(--insignia-terminado); }
+.insignia.cancelado   { color: var(--insignia-cancelado); }
+.insignia.fallido     { color: var(--insignia-fallido); }
 
 /* --- Barras de progreso --------------------------------------------------- */
 .barra {

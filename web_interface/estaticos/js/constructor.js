@@ -104,13 +104,15 @@ class ConstructorDeExperimento {
       return;
     }
     /* Las del núcleo van marcadas por defecto: es el comportamiento del CLI. */
-    caja.innerHTML = politicas.map((p) =>
-      "<label class='casilla'>" +
+    caja.innerHTML = politicas.map((p) =>{
+      const insignia = p.origen === "nucleo" ? "pendiente" : "terminado";
+      return "<label class='casilla'>" +
       "<input type='checkbox' data-politica='" + escaparHTML(p.nombre_clase) + "'" +
       (p.origen === "nucleo" ? " checked" : "") + ">"+
       "<span>" + escaparHTML(p.etiqueta) + " "+
-      "<span class='insignia'>" + (p.origen === "nucleo" ? "proyecto" : "custom") +
-      "</span></span></label>").join("");
+      "<span class='insignia "+insignia+"'>" + (p.origen === "nucleo" ? "proyecto" : "custom") +
+      "</span></span></label>"
+    }).join("");
   }
 
   politicasElegidas() {

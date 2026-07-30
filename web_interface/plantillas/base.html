@@ -22,6 +22,9 @@
       <a href="/optimizadores" class="{{ 'activo' if seccion == 'optimizadores' }}">Optimizadores</a>
       <a href="/politicas" class="{{ 'activo' if seccion == 'politicas' }}">Políticas</a>
     </nav>
+    <nav class="navegacionder">
+    <button id="modo-base",aria-label="Modo">Modo Claro</button>
+    </nav>
   </header>
 
   <main class="contenido">
@@ -44,6 +47,34 @@
     }).catch(function () {
       document.getElementById("estado-servidor").textContent = "sin conexión con el servidor";
     });
+
+    
+
+    const modoBtn = document.getElementById("modo-base");
+    const root = document.documentElement;
+
+    const modo = localStorage.getItem("modo-color");
+    const modo_defecto = window.matchMedia('(modo-preferido-color: claro)').matches;
+
+    const modo_inicial= modo || (modo_defecto ? 'claro':'oscuro');
+
+    root.setAttribute("modo-color",modo_inicial);
+    updateBtnModo(modo_inicial);
+
+    modoBtn.addEventListener('click',()=>
+    {
+      const modoActual = root.getAttribute('modo-color');
+      const modoNuevo = modoActual === 'oscuro' ? 'claro':'oscuro';
+
+      root.setAttribute('modo-color',modoNuevo);
+      localStorage.setItem("modo-color",modoNuevo);
+      updateBtnModo(modoNuevo);
+    });
+
+    function updateBtnModo(modo){
+      modoBtn.textContent = modo === "oscuro" ? "Modo Claro":"Modo Oscuro";
+    }
+
   </script>
   {% block scripts %}{% endblock %}
 </body>
