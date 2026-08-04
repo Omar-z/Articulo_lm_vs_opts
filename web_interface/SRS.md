@@ -218,6 +218,7 @@ web_interface/
 | Id | Requisito |
 |---|---|
 | RF-4.1 | Listar los de `data_sets/` (solo lectura) y los subidos |
+| RF-4.1.1 | De `data_sets/` cargar **solo los archivos preprocesados**, reconocidos por el sufijo `_pre` o `-pre` antes de la extensión. Los subidos por la web no pasan por el filtro |
 | RF-4.2 | Vista previa con separador y encabezado ajustables |
 | RF-4.3 | Estadísticas por columna: tipo, rango, media, nulos, distintos |
 | RF-4.4 | Inferir el esquema: tipo de problema, entradas, salidas, columna objetivo y mapa de clases |

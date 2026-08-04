@@ -141,6 +141,18 @@ En **Datasets**, arrastra un archivo o selecciónalo. Se admiten `.csv`, `.data`
 `web_interface/data/datasets/` y aparecen en el constructor. Los de `data_sets/` son
 de solo lectura.
 
+> **De `data_sets/` solo se cargan los archivos ya preprocesados**: los que terminan
+> en `_pre` o `-pre` antes de la extensión (`abalone_pre.csv`, `wine-pre.csv`). Los
+> datos crudos necesitan limpieza previa —fechas a Unix, clases numeradas desde 0,
+> nulos— y no se pueden entrenar tal cual, así que no se ofrecen. Si te falta un
+> dataset, renómbralo con ese sufijo y recarga la página.
+>
+> Los archivos que subas por la web **no** pasan por ese filtro: aparecen siempre,
+> se llamen como se llamen.
+
+El patrón está en `SUFIJOS_PREPROCESADO`, dentro de `configuracion.py`, por si
+quieres añadir otro sufijo o quitar el filtro.
+
 ### Optimizadores
 
 Deja un archivo `.py` en `web_interface/plugins/` con una clase que derive de

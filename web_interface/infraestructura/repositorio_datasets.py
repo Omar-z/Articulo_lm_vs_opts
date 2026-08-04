@@ -3,6 +3,11 @@
 Reúne dos orígenes en una sola lista: los que ya están en `data_sets/` (solo
 lectura) y los que sube el usuario, que van a `data/datasets/`.
 
+De `data_sets/` **solo se autocargan los archivos ya preprocesados**, los que
+llevan el sufijo `_pre` o `-pre` antes de la extensión. El resto son datos crudos
+que el modelo no puede consumir sin limpiar primero, y su presencia en el catálogo
+solo estorbaba. Los archivos que sube el usuario no pasan por ese filtro.
+
 Cada dataset se direcciona por un **identificador opaco** derivado de su ruta, no
 por la ruta misma: así ninguna URL puede contener `../` y el traversal queda
 descartado por construcción.
@@ -21,6 +26,7 @@ from web_interface.configuracion import (
     EXTENSIONES_DATASET,
     MAX_BYTES_DATASET,
     RAIZ_PROYECTO,
+    SUFIJOS_PREPROCESADO,
 )
 from web_interface.infraestructura.rutas import id_opaco, sanear_nombre
 
@@ -185,6 +191,10 @@ class RepositorioDeDatasets:
                 continue
             if ruta.name.startswith("."):
                 continue
+            #Del repositorio solo se autocargan los archivos ya preprocesados; los
+            #que sube el usuario se muestran siempre, porque los sube a propósito.
+            if origen == "repo" and not es_preprocesado(ruta):
+                continue
             try:
                 encontrados.append(self._describir(ruta, origen))
             except OSError:
@@ -203,6 +213,17 @@ class RepositorioDeDatasets:
             bytes=estado.st_size,
             modificado=estado.st_mtime,
         )
+
+
+def es_preprocesado(ruta: Path) -> bool:
+    """Indica si el archivo está marcado como listo para entrenar.
+
+    Se reconoce por el sufijo del nombre, antes de la extensión: `abalone_pre.csv`
+    o `wine-pre.csv`. Los datos crudos del repositorio necesitan limpieza previa
+    (fechas a Unix, clases renumeradas desde 0, nulos) y no se pueden entrenar tal
+    cual, así que no se ofrecen en el catálogo.
+    """
+    return ruta.stem.lower().endswith(SUFIJOS_PREPROCESADO)
 
 
 def _relativa(ruta: Path) -> str:

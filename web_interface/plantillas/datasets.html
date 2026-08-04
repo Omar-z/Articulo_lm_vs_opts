@@ -7,6 +7,14 @@
   en <code>web_interface/data/datasets/</code> y quedan disponibles en el constructor.
 </p>
 
+<div class="aviso info">
+  De <code>data_sets/</code> solo se cargan los archivos <strong>ya
+  preprocesados</strong>: se les pone un prefijo: <code>_pre</code> o <code>-pre</code>
+  antes de la extensión, como <code>abalone_pre.csv</code>. Los datos crudos
+  necesitan limpieza previa (fechas a Unix, clases numeradas desde 0, nulos) y no
+  se pueden entrenar tal cual.
+</div>
+
 <section class="panel">
   <h2>Subir un dataset</h2>
   <div id="zona-subida" class="zona-subida">

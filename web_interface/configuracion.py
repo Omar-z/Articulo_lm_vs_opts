@@ -63,6 +63,14 @@ EXTENSIONES_DATASET: frozenset[str] = frozenset(
 )
 MAX_BYTES_DATASET: int = 200 * 1024 * 1024  # 200 MB
 
+#Del directorio `data_sets/` solo se cargan los archivos ya preprocesados, es
+#decir, los que terminan con uno de estos sufijos antes de la extensión
+#(`abalone_pre.csv`, `wine-pre.csv`). El resto son datos crudos —con fechas,
+#nulos o clases sin normalizar— que el modelo no puede consumir tal cual, y
+#llenaban el catálogo de ruido: `bank_marketing` aporta seis archivos por sí solo.
+#Los datasets que se suben desde la web no pasan por este filtro.
+SUFIJOS_PREPROCESADO: tuple[str, ...] = ("_pre", "-pre")
+
 #Eventos de progreso
 MAX_EVENTOS_HISTORIAL: int = 20_000     # buffer circular por trabajo
 MAX_LINEAS_BITACORA: int = 2_000        # líneas de stdout capturadas por trabajo
