@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<section class="portada">
+  <h1><span>CAIC <strong>ANFIS</strong> Tests</span></h1>
+  <p class="subtitulo">
+    Configura, ejecuta y compara experimentos del modelo neurodifuso con distintos
+    optimizadores, sin escribir JSON a mano ni tocar la terminal.
+  </p>
+
+  <div class="rejilla-tarjetas">
+    <a class="tarjeta" href="/constructor">
+      <h2>Experimento</h2>
+      <p>Elige dataset, reglas y optimizadores en un formulario. Ejecuta experimento.</p>
+    </a>
+    <a class="tarjeta" href="/trabajos">
+      <h2>Trabajos</h2>
+      <p>Cola de ejecución y monitor en vivo con la curva de pérdida época a época.</p>
+    </a>
+    <a class="tarjeta" href="/historial">
+      <h2>Historial</h2>
+      <p>Resultados de la web y los que ya existen en <code>resultados/</code>.</p>
+    </a>
+    <a class="tarjeta" href="/datasets">
+      <h2>Datasets</h2>
+      <p>Explora los  <code>data sets</code> guardados en el servidor, mira sus estadísticas o sube uno nuevo.</p>
+    </a>
+    <a class="tarjeta" href="/optimizadores">
+      <h2>Optimizadores</h2>
+      <p>Catálogo de <code>torch.optim</code>, el LM propio y tus plugins.</p>
+    </a>
+    <a class="tarjeta" href="/politicas">
+      <h2>Políticas</h2>
+      <p>Crea tus propias políticas de detener el experimento.</p>
+    </a>
+  </div>
+</section>
+{% endblock %}

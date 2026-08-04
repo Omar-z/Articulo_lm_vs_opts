@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<div class="monitor" data-id-trabajo="{{ id_trabajo }}">
+
+  <div class="encabezado-monitor">
+    <div>
+      <h1 id="descripcion-trabajo" class="tenue">cargando…</h1>
+      <p class="tenue mono" id="meta-trabajo">{{ id_trabajo }}</p>
+    </div>
+    <div class="acciones-monitor">
+      <span class="insignia pendiente" id="insignia-estado">—</span>
+      <button id="btn-cancelar" class="peligro" disabled>Cancelar</button>
+      <a id="enlace-resultados" class="boton" style="display:none">Ver resultados</a>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="fila-progreso">
+      <label>Progreso global</label>
+      <span class="mono" id="texto-global">0 %</span>
+    </div>
+    <div class="barra"><span id="barra-global" style="width:0%"></span></div>
+
+    <div class="fila-progreso" style="margin-top:.9rem">
+      <label id="etiqueta-corrida">Corrida actual</label>
+      <span class="mono" id="texto-corrida">—</span>
+    </div>
+    <div class="barra"><span id="barra-corrida" style="width:0%"></span></div>
+  </section>
+
+  <section class="panel">
+    <div class="encabezado-panel">
+      <h2>Pérdida por época</h2>
+      <label class="control-en-linea">
+        escala
+        <select id="escala-y">
+          <option value="log" selected>logarítmica</option>
+          <option value="lineal">lineal</option>
+        </select>
+      </label>
+    </div>
+    <div class="grafica-envoltura">
+      <canvas id="grafica-loss" height="120"></canvas>
+    </div>
+    <p class="tenue" id="sin-grafica" style="display:none">
+      Chart.js no está disponible; las curvas se muestran en la tabla de abajo.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2>Corridas terminadas <span class="tenue" id="cuenta-corridas"></span></h2>
+    <div class="tabla-envoltura">
+      <table id="tabla-corridas">
+        <thead>
+          <tr>
+            <th>Optimizador</th><th class="num">Reglas</th><th class="num">Corrida</th>
+            <th class="num">Épocas</th><th class="num">Pérdida final</th>
+            <th>Evaluación</th><th class="num">Tiempo</th><th>Motivo de paro</th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="8" class="vacio">Todavía no ha terminado ninguna corrida.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Bitácora del núcleo</h2>
+    <pre class="bitacora" id="bitacora">(sin salida todavía)</pre>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ estatico('js/vendor/chart.umd.min.js') }}"></script>
+<script src="{{ estatico('js/graficas.js') }}"></script>
+<script src="{{ estatico('js/monitor.js') }}"></script>
+{% endblock %}

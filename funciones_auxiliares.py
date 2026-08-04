@@ -329,7 +329,9 @@ class PoliticaNanOrInf(PoliticaDeParo):
     def __init__(self)->None:
         self.nombre = "Politica de NaN o Inf"
     def apply(self,loss_value:float, optimizador:Any)->bool:
-        return np.isnan(loss_value) or np.isinf(loss_value)
+        valor = float(loss_value.detach()) if isinstance(loss_value, torch.Tensor)\
+                else float(loss_value)
+        return np.isnan(valor) or np.isinf(valor)
     
 class CompositorDePoliticas:
     def __init__(self, politicas:list[PoliticaDeParo])->None:

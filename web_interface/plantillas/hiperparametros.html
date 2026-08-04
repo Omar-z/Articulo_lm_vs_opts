@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<h1>Búsqueda de hiperparámetros</h1>
+<p class="subtitulo">
+  Barre una rejilla logarítmica de learning rates para cada optimizador y cada
+  número de reglas, y se queda con el que menor pérdida final alcanza. Equivale a
+  <code>mejores_parametros.py</code>, y el resultado tiene el mismo formato.
+</p>
+
+<div class="aviso">
+  Es el barrido más caro de todos: son
+  <em>reglas × optimizadores × valores</em> entrenamientos. Empieza con pocas
+  reglas, pocas épocas y unos 20 valores para hacerte una idea del rango útil.
+</div>
+
+<section class="panel">
+  <h2>1 · Configuración de partida</h2>
+  <div class="rejilla-campos">
+    <div class="campo">
+      <label for="experimento">Configuración guardada</label>
+      <select id="experimento"><option value="">cargando…</option></select>
+    </div>
+    <div class="campo">
+      <label for="dispositivo">Dispositivo</label>
+      <select id="dispositivo"></select>
+    </div>
+  </div>
+  <p class="tenue" id="detalle-experimento">
+    Guarda antes una configuración desde el <a href="/constructor">constructor</a>.
+  </p>
+</section>
+
+<section class="panel">
+  <h2>2 · Rejilla de búsqueda</h2>
+  <div class="rejilla-campos">
+    <div class="campo"><label for="valores">Valores a probar</label>
+      <input type="number" id="valores" min="2" max="200" value="20"></div>
+    <div class="campo"><label for="lr_max">Valor máximo</label>
+      <input type="text" id="lr_max" value="0.99"></div>
+    <div class="campo"><label for="lr_min">Valor mínimo</label>
+      <input type="text" id="lr_min" value="1e-8"></div>
+    <div class="campo"><label for="epocas">Épocas por prueba</label>
+      <input type="number" id="epocas" min="1" value="100"></div>
+    <div class="campo"><label for="reglas_inicial">Reglas desde</label>
+      <input type="number" id="reglas_inicial" min="1" value="3"></div>
+    <div class="campo"><label for="reglas_total">Reglas hasta</label>
+      <input type="number" id="reglas_total" min="1" value="3"></div>
+  </div>
+  <p class="tenue" id="resumen-busqueda"></p>
+  <p class="tenue">
+    En los optimizadores de PyTorch se barre <code>lr</code>; en el
+    Levenberg&ndash;Marquardt se barre <code>lambda_init</code>, que es su equivalente.
+  </p>
+</section>
+
+<section class="panel">
+  <h2>3 · Lanzar</h2>
+  <div id="resultado-lanzamiento"></div>
+  <div class="acciones">
+    <button id="btn-lanzar" class="primario">Buscar hiperparámetros</button>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Búsquedas anteriores</h2>
+  <div class="tabla-envoltura">
+    <table id="tabla-busquedas">
+      <thead><tr><th>Descripción</th><th>Estado</th><th class="num">Progreso</th><th></th></tr></thead>
+      <tbody><tr><td colspan="4" class="vacio">Cargando…</td></tr></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class BuscadorDeHiperparametros {
+  constructor() {
+    this.experimentos = [];
+    document.getElementById("btn-lanzar").addEventListener("click", () => this.lanzar());
+    ["valores", "reglas_inicial", "reglas_total"].forEach((id) =>
+      document.getElementById(id).addEventListener("input", () => this.resumen()));
+    document.getElementById("experimento")
+      .addEventListener("change", () => this.alElegir());
+    this.cargar();
+    setInterval(() => this.cargarTrabajos(), 4000);
+  }
+
+  async cargar() {
+    const [experimentos, dispositivos] = await Promise.all([
+      ClienteAPI.obtener("/api/experimentos").catch(() => []),
+      ClienteAPI.obtener("/api/dispositivos").catch(() => []),
+    ]);
+    this.experimentos = experimentos;
+
+    const selector = document.getElementById("experimento");
+    selector.innerHTML = experimentos.length
+      ? experimentos.map((e) => "<option value='" + e.id + "'>" +
+          escaparHTML(e.nombre) + "</option>").join("")
+      : "<option value=''>— no hay configuraciones guardadas —</option>";
+
+    document.getElementById("dispositivo").innerHTML = dispositivos.map((d) =>
+      "<option value='" + d.id + "'" +
+      (d.disponible && d.compatible ? "" : " disabled") + ">" +
+      escaparHTML(d.etiqueta) + "</option>").join("");
+
+    this.alElegir();
+    this.cargarTrabajos();
+  }
+
+  alElegir() {
+    const id = document.getElementById("experimento").value;
+    const experimento = this.experimentos.find((e) => e.id === id);
+    const detalle = document.getElementById("detalle-experimento");
+    if (!experimento) {
+      detalle.innerHTML =
+        "Guarda antes una configuración desde el <a href='/constructor'>constructor</a>.";
+    } else {
+      detalle.textContent = experimento.dataset + " · " + experimento.tipo +
+        " · optimizadores: " + experimento.optimizadores.join(", ");
+      if (experimento.reglas[0]) {
+        document.getElementById("reglas_inicial").value = experimento.reglas[0];
+        document.getElementById("reglas_total").value = experimento.reglas[0];
+      }
+      this.optimizadores = experimento.optimizadores.length;
+    }
+    this.resumen();
+  }
+
+  resumen() {
+    const n = (id) => Number(document.getElementById(id).value) || 0;
+    const reglas = Math.max(0, n("reglas_total") - n("reglas_inicial") + 1);
+    const total = reglas * n("valores") * (this.optimizadores || 1);
+    document.getElementById("resumen-busqueda").innerHTML =
+      "<strong>" + total + "</strong> entrenamientos de hasta " + n("epocas") +
+      " épocas." + (total > 500 ? " <span class='alerta'>Esto va a tardar.</span>" : "");
+  }
+
+  async lanzar() {
+    const id = document.getElementById("experimento").value;
+    const salida = document.getElementById("resultado-lanzamiento");
+    if (!id) {
+      salida.innerHTML = "<div class='aviso error'>Elige una configuración guardada.</div>";
+      return;
+    }
+
+    let config;
+    try {
+      config = await ClienteAPI.obtener("/api/experimentos/" + id);
+    } catch (error) {
+      salida.innerHTML = "<div class='aviso error'>" + escaparHTML(error.message) + "</div>";
+      return;
+    }
+
+    /* Se acotan reglas y épocas a lo pedido aquí, sin tocar la configuración guardada. */
+    config.experimentacion.reglas_inicial = Number(document.getElementById("reglas_inicial").value);
+    config.experimentacion.reglas_total = Number(document.getElementById("reglas_total").value);
+    config.experimentacion.epocas = Number(document.getElementById("epocas").value);
+    config.experimentacion.corridas = 1;
+
+    try {
+      const respuesta = await ClienteAPI.enviar("/api/trabajos", {
+        tipo: "hiperparametros",
+        config: config,
+        dispositivo: document.getElementById("dispositivo").value || "cpu",
+        valores_hiperparametro: Number(document.getElementById("valores").value),
+        lr_max: Number(document.getElementById("lr_max").value),
+        lr_min: Number(document.getElementById("lr_min").value),
+      });
+      location.href = "/monitor/" + respuesta.id_trabajo;
+    } catch (error) {
+      salida.innerHTML = "<div class='aviso error'>" + escaparHTML(error.message) + "</div>";
+    }
+  }
+
+  async cargarTrabajos() {
+    try {
+      const trabajos = (await ClienteAPI.obtener("/api/trabajos"))
+        .filter((t) => t.tipo === "hiperparametros");
+      const cuerpo = document.querySelector("#tabla-busquedas tbody");
+      cuerpo.innerHTML = trabajos.length
+        ? trabajos.map((t) =>
+            "<tr><td>" + escaparHTML(t.descripcion) + "</td>" +
+            "<td><span class='insignia " + t.estado + "'>" + t.estado + "</span></td>" +
+            "<td class='num'>" + ((t.fraccion || 0) * 100).toFixed(0) + " %</td>" +
+            "<td><a class='boton' href='/monitor/" + t.id + "'>Monitor</a></td></tr>").join("")
+        : "<tr><td colspan='4' class='vacio'>Todavía no hay búsquedas.</td></tr>";
+    } catch (error) { /* silencioso */ }
+  }
+}
+document.addEventListener("DOMContentLoaded", () => new BuscadorDeHiperparametros());
+</script>
+{% endblock %}

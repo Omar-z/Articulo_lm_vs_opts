@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<div class="detalle-resultado"
+     data-origen="{{ origen }}" data-id="{{ id_experimento }}">
+
+  <div class="encabezado-monitor">
+    <div>
+      <h1 id="titulo-experimento" class="tenue">cargando…</h1>
+      <p class="tenue mono" id="meta-experimento">{{ origen }} / {{ id_experimento }}</p>
+    </div>
+    <div class="acciones-monitor">
+      <a class="boton" href="/api/resultados/{{ origen }}/{{ id_experimento }}/csv">
+        Descargar CSV
+      </a>
+    </div>
+  </div>
+
+  <div id="aviso-parcial" class="aviso" style="display:none">
+    Este barrido se canceló antes de terminar; los resultados son parciales.
+  </div>
+
+  <section class="panel">
+    <div class="encabezado-panel">
+      <h2>Comparativa por número de reglas</h2>
+      <label class="control-en-linea">
+        métrica
+        <select id="selector-metrica"></select>
+      </label>
+    </div>
+    <div class="grafica-envoltura">
+      <canvas id="grafica-comparativa" height="120"></canvas>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Tabla de resultados</h2>
+    <p class="tenue" style="margin-top:-.4rem">
+      Cada celda es el promedio de las corridas para esa combinación.
+    </p>
+    <div class="tabla-envoltura">
+      <table id="tabla-pivote">
+        <thead><tr><th>Optimizador</th><th>Métrica</th></tr></thead>
+        <tbody><tr><td colspan="2" class="vacio">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-graficas" style="display:none">
+    <h2>Gráficas generadas por el script</h2>
+    <div class="galeria" id="galeria-graficas"></div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ estatico('js/vendor/chart.umd.min.js') }}"></script>
+<script src="{{ estatico('js/graficas.js') }}"></script>
+<script>
+class DetalleDeResultado {
+  constructor(raiz) {
+    this.origen = raiz.dataset.origen;
+    this.id = raiz.dataset.id;
+    this.base = "/api/resultados/" + this.origen + "/" + this.id;
+
+    this.grafica = new GraficaDeCurvas(
+      document.getElementById("grafica-comparativa"),
+      { etiquetaX: "número de reglas", etiquetaY: "valor", ejeY: "lineal" }
+    );
+
+    document.getElementById("selector-metrica")
+      .addEventListener("change", (e) => this.pintarComparativa(e.target.value));
+
+    this.cargar();
+  }
+
+  async cargar() {
+    const carga = new IndicadorDeCarga("Cargando el experimento");
+    carga.fase("Leyendo el resumen de resultados…");
+    carga.progreso(0, 0);
+
+    let resumen;
+    try {
+      resumen = await ClienteAPI.obtener(this.base);
+    } catch (error) {
+      carga.error("No se pudo cargar: " + error.message);
+      document.getElementById("titulo-experimento").textContent =
+        "No se pudo cargar: " + error.message;
+      setTimeout(() => carga.cerrar(), 2500);
+      return;
+    }
+
+    this.resumen = resumen;
+    const titulo = document.getElementById("titulo-experimento");
+    titulo.textContent = resumen.nombre;
+    titulo.classList.remove("tenue");
+    document.getElementById("meta-experimento").textContent =
+      resumen.dataset + " · " + resumen.tipo + " · " +
+      new Date(resumen.creado * 1000).toLocaleString("es");
+
+    if (resumen.cancelado) {
+      document.getElementById("aviso-parcial").style.display = "block";
+    }
+
+    const metricas = Object.keys(resumen.metricas);
+    const selector = document.getElementById("selector-metrica");
+    selector.innerHTML = metricas
+      .map((m) => "<option value='" + m + "'>" + m + "</option>").join("");
+
+    /* Se abre con la métrica que mejor resume el experimento. */
+    const preferida = resumen.tipo === "clasificacion" ? "exactitud" : "R2";
+    const inicial = metricas.includes(preferida) ? preferida : metricas[0];
+    if (inicial) { selector.value = inicial; this.pintarComparativa(inicial); }
+
+    carga.fase("Armando la tabla comparativa…");
+    carga.progreso(1, 2);
+    await new Promise((r) => setTimeout(r, 0));
+    this.pintarTabla();
+
+    if (this.origen === "repo") {
+      carga.fase("Buscando las gráficas del script…");
+      carga.progreso(2, 2);
+      await this.cargarGraficas();
+    }
+    carga.cerrar();
+  }
+
+  pintarComparativa(metrica) {
+    const series = this.resumen.metricas[metrica] || {};
+    const reglas = this.resumen.reglas;
+    this.grafica.limpiar();
+    Object.keys(series).forEach((optimizador) => {
+      this.grafica.fijarSerie(optimizador + "|0|0", reglas, series[optimizador],
+        optimizador, true);
+    });
+    /* Con pocos puntos conviene verlos marcados. */
+    if (this.grafica.disponible) {
+      this.grafica.grafica.data.datasets.forEach((d) => { d.pointRadius = 3; });
+      /* La pérdida abarca órdenes de magnitud; la exactitud no. */
+      const logaritmica = ["loss", "SSE", "MSE", "RMSE", "MAE"].includes(metrica);
+      this.grafica.cambiarEscala(logaritmica ? "log" : "lineal");
+    }
+    this.grafica.refrescar();
+  }
+
+  pintarTabla() {
+    const reglas = this.resumen.reglas;
+    const metricas = Object.keys(this.resumen.metricas);
+    const optimizadores = this.resumen.optimizadores;
+
+    document.querySelector("#tabla-pivote thead").innerHTML =
+      "<tr><th>Optimizador</th><th>Métrica</th>" +
+      reglas.map((r) => "<th class='num'>" + r + " reglas</th>").join("") + "</tr>";
+
+    const filas = [];
+    optimizadores.forEach((optimizador) => {
+      metricas.forEach((metrica, i) => {
+        const valores = (this.resumen.metricas[metrica] || {})[optimizador] || [];
+        filas.push(
+          "<tr" + (i === 0 ? " class='inicio-grupo'" : "") + ">" +
+          "<td>" + (i === 0 ? escaparHTML(optimizador) : "") + "</td>" +
+          "<td class='tenue'>" + escaparHTML(metrica) + "</td>" +
+          reglas.map((_, j) =>
+            "<td class='num'>" + formatearNumero(valores[j], 4) + "</td>").join("") +
+          "</tr>"
+        );
+      });
+    });
+    document.querySelector("#tabla-pivote tbody").innerHTML =
+      filas.join("") || "<tr><td colspan='2' class='vacio'>Sin datos.</td></tr>";
+  }
+
+  async cargarGraficas() {
+    try {
+      const imagenes = await ClienteAPI.obtener(
+        "/api/resultados/repo/" + this.id + "/graficas");
+      if (!imagenes.length) return;
+      document.getElementById("panel-graficas").style.display = "block";
+      document.getElementById("galeria-graficas").innerHTML = imagenes
+        .slice(0, 60)
+        .map((i) =>
+          "<figure><img loading='lazy' src='" + i.url + "' alt='" +
+          escaparHTML(i.nombre) + "'>" +
+          "<figcaption class='tenue'>" + escaparHTML(i.nombre) + "</figcaption></figure>")
+        .join("");
+    } catch (error) { /* las gráficas son opcionales */ }
+  }
+}
+document.addEventListener("DOMContentLoaded", function () {
+  const raiz = document.querySelector(".detalle-resultado");
+  if (raiz) new DetalleDeResultado(raiz);
+});
+</script>
+{% endblock %}

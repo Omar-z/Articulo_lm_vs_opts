@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<h1>Historial de experimentos</h1>
+<p class="subtitulo">
+  Aquí aparecen los experimentos lanzados desde la web y también los que ya estaban
+  en <code>resultados/</code>, generados con <code>rpipeline.py</code>.
+</p>
+
+<div class="filtros">
+  <label>Origen
+    <select id="filtro-origen">
+      <option value="">todos</option>
+      <option value="web">de la web</option>
+      <option value="repo">del script</option>
+    </select>
+  </label>
+</div>
+
+<section class="panel">
+  <div class="tabla-envoltura">
+    <table id="tabla-historial">
+      <thead>
+        <tr>
+          <th>Experimento</th><th>Origen</th><th>Tipo</th>
+          <th>Optimizadores</th><th>Reglas</th><th>Fecha</th><th></th>
+        </tr>
+      </thead>
+      <tbody><tr><td colspan="7" class="vacio">Cargando…</td></tr></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class Historial {
+  constructor() {
+    this.cuerpo = document.querySelector("#tabla-historial tbody");
+    document.getElementById("filtro-origen")
+      .addEventListener("change", (e) => this.cargar(e.target.value));
+    this.cargar("");
+  }
+
+  async cargar(origen) {
+    const carga = new IndicadorDeCarga("Cargando el historial");
+    carga.fase("Leyendo los experimentos guardados…");
+    carga.progreso(0, 0);
+    try {
+      const ruta = "/api/resultados" + (origen ? "?origen=" + origen : "");
+      this.pintar(await ClienteAPI.obtener(ruta));
+    } catch (error) {
+      this.cuerpo.innerHTML =
+        "<tr><td colspan='7' class='vacio'>No se pudo cargar: " +
+        escaparHTML(error.message) + "</td></tr>";
+    } finally {
+      carga.cerrar();
+    }
+  }
+
+  pintar(experimentos) {
+    if (!experimentos.length) {
+      this.cuerpo.innerHTML =
+        "<tr><td colspan='7' class='vacio'>Todavía no hay resultados.</td></tr>";
+      return;
+    }
+    this.cuerpo.innerHTML = experimentos.map((e) => {
+      const fecha = new Date(e.creado * 1000).toLocaleString("es");
+      const reglas = e.reglas.length
+        ? e.reglas[0] + "–" + e.reglas[e.reglas.length - 1]
+        : "—";
+      const etiqueta = e.origen === "web" ? "web" : "script";
+      const cancelado = e.cancelado
+        ? " <span class='insignia cancelado'>parcial</span>" : "";
+      return "<tr>" +
+        "<td><a href='/historial/" + e.origen + "/" + e.id + "'>" +
+          escaparHTML(e.nombre) + "</a>" + cancelado + "</td>" +
+        "<td><span class='insignia " + (e.origen === 'web' ? 'ejecutando' : 'pendiente') +
+          "'>" + etiqueta + "</span></td>" +
+        "<td>" + escaparHTML(e.tipo) + "</td>" +
+        "<td class='tenue'>" + escaparHTML(e.optimizadores.join(", ")) + "</td>" +
+        "<td class='num'>" + reglas + "</td>" +
+        "<td class='tenue'>" + fecha + "</td>" +
+        "<td><a class='boton' href='/api/resultados/" + e.origen + "/" + e.id +
+          "/csv'>CSV</a></td>" +
+        "</tr>";
+    }).join("");
+  }
+}
+document.addEventListener("DOMContentLoaded", () => new Historial());
+</script>
+{% endblock %}

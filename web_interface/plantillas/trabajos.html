@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<h1>Trabajos</h1>
+<p class="subtitulo">
+  Se ejecuta un entrenamiento a la vez: compiten por la misma CPU y los tiempos
+  deben ser comparables entre optimizadores. El resto espera en la cola.
+</p>
+
+<section class="panel">
+  <div class="tabla-envoltura">
+    <table id="tabla-trabajos">
+      <thead>
+        <tr>
+          <th>Estado</th><th>Descripción</th><th class="num">Progreso</th>
+          <th class="num">Duración</th><th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody><tr><td colspan="5" class="vacio">Cargando…</td></tr></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class ListaDeTrabajos {
+  constructor() {
+    this.cuerpo = document.querySelector("#tabla-trabajos tbody");
+    this.conectar();
+  }
+
+  conectar() {
+    const socket = new WebSocket(ClienteAPI.urlWebSocket("/ws/cola"));
+    socket.onmessage = (m) => {
+      const datos = JSON.parse(m.data);
+      if (datos.tipo === "cola") this.pintar(datos.trabajos);
+    };
+    /* Si el WebSocket no está disponible, se sondea. */
+    socket.onclose = () => {
+      if (!this.sondeo) {
+        this.sondeo = setInterval(() => this.recargar(), 3000);
+        this.recargar();
+      }
+    };
+  }
+
+  async recargar() {
+    try { this.pintar(await ClienteAPI.obtener("/api/trabajos")); } catch (e) {}
+  }
+
+  pintar(trabajos) {
+    if (!trabajos.length) {
+      this.cuerpo.innerHTML =
+        "<tr><td colspan='5' class='vacio'>No hay trabajos todavía. " +
+        "Crea uno desde el <a href='/constructor'>constructor</a>.</td></tr>";
+      return;
+    }
+    this.cuerpo.innerHTML = trabajos.map((t) => {
+      const porcentaje = ((t.fraccion || 0) * 100).toFixed(0) + " %";
+      const duracion = t.duracion ? t.duracion.toFixed(0) + " s" : "—";
+      let acciones = "<a class='boton' href='/monitor/" + t.id + "'>Monitor</a>";
+      if (t.puede_cancelar) {
+        acciones += " <button class='peligro' data-cancelar='" + t.id + "'>Cancelar</button>";
+      }
+      return "<tr>" +
+        "<td><span class='insignia " + t.estado + "'>" + t.estado + "</span></td>" +
+        "<td>" + escaparHTML(t.descripcion) + "</td>" +
+        "<td class='num'>" + porcentaje + "</td>" +
+        "<td class='num'>" + duracion + "</td>" +
+        "<td>" + acciones + "</td></tr>";
+    }).join("");
+
+    this.cuerpo.querySelectorAll("[data-cancelar]").forEach((boton) => {
+      boton.addEventListener("click", async () => {
+        boton.disabled = true;
+        try { await ClienteAPI.enviar("/api/trabajos/" + boton.dataset.cancelar + "/cancelar"); }
+        catch (e) { boton.disabled = false; }
+      });
+    });
+  }
+}
+document.addEventListener("DOMContentLoaded", () => new ListaDeTrabajos());
+</script>
+{% endblock %}

@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block contenido %}
+<div class="detalle-dataset" data-id="{{ id_dataset }}">
+  <div class="encabezado-monitor">
+    <div>
+      <h1 id="titulo-dataset" class="tenue">cargando…</h1>
+      <p class="tenue mono" id="meta-dataset"></p>
+    </div>
+    <div class="acciones-monitor">
+      <a class="boton primario" id="enlace-usar" href="/constructor?dataset={{ id_dataset }}">
+        Usar en un experimento
+      </a>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="encabezado-panel">
+      <h2>Vista previa</h2>
+      <div class="controles-lectura">
+        <label class="control-en-linea">separador
+          <select id="sep">
+            <option value="">(inferido)</option>
+            <option value=",">coma</option>
+            <option value=";">punto y coma</option>
+            <option value="\t">tabulador</option>
+            <option value=" ">espacio</option>
+          </select>
+        </label>
+        <label class="control-en-linea">encabezado
+          <select id="header">
+            <option value="">(inferido)</option>
+            <option value="0">primera fila</option>
+            <option value="null">sin encabezado</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div id="aviso-esquema" class="aviso info" style="display:none"></div>
+    <div class="tabla-envoltura">
+      <table id="tabla-previa">
+        <thead></thead><tbody><tr><td class="vacio">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Estadísticas por columna</h2>
+    <div class="tabla-envoltura">
+      <table id="tabla-estadisticas">
+        <thead>
+          <tr>
+            <th>Columna</th><th>Tipo</th><th class="num">Mín</th><th class="num">Máx</th>
+            <th class="num">Media</th><th class="num">Desv.</th>
+            <th class="num">Distintos</th><th class="num">Nulos</th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="8" class="vacio">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class DetalleDeDataset {
+  constructor(raiz) {
+    this.id = raiz.dataset.id;
+    ["sep", "header"].forEach((campo) =>
+      document.getElementById(campo).addEventListener("change", () => this.recargar())
+    );
+    this.recargar();
+  }
+
+  parametros() {
+    const partes = [];
+    const sep = document.getElementById("sep").value;
+    const header = document.getElementById("header").value;
+    if (sep) partes.push("sep=" + encodeURIComponent(sep));
+    if (header) partes.push("header=" + encodeURIComponent(header));
+    return partes.length ? "?" + partes.join("&") : "";
+  }
+
+  async recargar() {
+    const q = this.parametros();
+    await Promise.all([
+      this.cargarPrevia(q),
+      this.cargarEstadisticas(q),
+      this.cargarEsquema(q),
+    ]);
+  }
+
+  async cargarPrevia(q) {
+    try {
+      const datos = await ClienteAPI.obtener(
+        "/api/datasets/" + this.id + "/vista-previa" + (q || "?") + "&filas=15");
+      const titulo = document.getElementById("titulo-dataset");
+      titulo.textContent = datos.nombre;
+      titulo.classList.remove("tenue");
+      document.getElementById("meta-dataset").textContent =
+        datos.ruta_relativa + " · " + datos.n_columnas + " columnas" +
+        (datos.n_filas_total ? " · " + datos.n_filas_total + " filas" : "");
+
+      document.querySelector("#tabla-previa thead").innerHTML =
+        "<tr><th class='num tenue'>#</th>" +
+        datos.columnas.map((c, i) =>
+          "<th class='num'>" + escaparHTML(c) + "<br><span class='tenue'>col " + i +
+          "</span></th>").join("") + "</tr>";
+
+      document.querySelector("#tabla-previa tbody").innerHTML =
+        datos.filas.map((fila, i) =>
+          "<tr><td class='num tenue'>" + i + "</td>" +
+          fila.map((v) => "<td class='num'>" +
+            (typeof v === "number" ? formatearNumero(v, 4) : escaparHTML(v)) +
+            "</td>").join("") + "</tr>").join("");
+    } catch (error) {
+      document.querySelector("#tabla-previa tbody").innerHTML =
+        "<tr><td class='vacio'>" + escaparHTML(error.message) + "</td></tr>";
+    }
+  }
+
+  async cargarEstadisticas(q) {
+    try {
+      const datos = await ClienteAPI.obtener(
+        "/api/datasets/" + this.id + "/estadisticas" + q);
+      document.querySelector("#tabla-estadisticas tbody").innerHTML =
+        datos.columnas.map((c) => {
+          const extra = c.tipo === "categorica" && c.valores
+            ? c.valores.slice(0, 4).map((v) => v.valor).join(", ") : "";
+          return "<tr>" +
+            "<td>" + escaparHTML(c.nombre) +
+              (extra ? "<br><span class='tenue'>" + escaparHTML(extra) + "…</span>" : "") +
+            "</td>" +
+            "<td class='tenue'>" + c.tipo + "</td>" +
+            "<td class='num'>" + formatearNumero(c.min, 3) + "</td>" +
+            "<td class='num'>" + formatearNumero(c.max, 3) + "</td>" +
+            "<td class='num'>" + formatearNumero(c.media, 3) + "</td>" +
+            "<td class='num'>" + formatearNumero(c.desviacion, 3) + "</td>" +
+            "<td class='num'>" + c.n_unicos + "</td>" +
+            "<td class='num'>" + c.nulos + "</td></tr>";
+        }).join("");
+    } catch (error) {
+      document.querySelector("#tabla-estadisticas tbody").innerHTML =
+        "<tr><td colspan='8' class='vacio'>" + escaparHTML(error.message) + "</td></tr>";
+    }
+  }
+
+  async cargarEsquema(q) {
+    const aviso = document.getElementById("aviso-esquema");
+    try {
+      const esquema = await ClienteAPI.obtener(
+        "/api/datasets/" + this.id + "/esquema-sugerido" + q);
+      let texto = "<strong>Configuración sugerida:</strong> " + esquema.tipo +
+        " · " + esquema.dataset_entradas + " entradas · " +
+        esquema.dataset_salidas + " salidas";
+      if (esquema.dataset_target_col !== null) {
+        texto += " · columna objetivo " + esquema.dataset_target_col;
+      }
+      if (esquema.dataset_map_col) {
+        texto += " · clases: " + Object.keys(esquema.dataset_map_col).join(", ");
+      }
+      if (esquema.aviso) {
+        texto += "<br><span class='tenue'>" + escaparHTML(esquema.aviso) + "</span>";
+      }
+      aviso.innerHTML = texto;
+      aviso.style.display = "block";
+    } catch (error) {
+      aviso.className = "aviso error";
+      aviso.textContent = "No se pudo inferir el esquema: " + error.message;
+      aviso.style.display = "block";
+    }
+  }
+}
+document.addEventListener("DOMContentLoaded", function () {
+  const raiz = document.querySelector(".detalle-dataset");
+  if (raiz) new DetalleDeDataset(raiz);
+});
+</script>
+{% endblock %}

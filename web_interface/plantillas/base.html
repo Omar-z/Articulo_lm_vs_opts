@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}{{ titulo|default("Laboratorio ANFIS") }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ estatico('css/estilos.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>&#129504;</text></svg>">
+  {% block cabecera %}{% endblock %}
+</head>
+<body>
+  <header class="barra-superior">
+    <a class="marca" href="/">
+      <span class="marca-icono">&#9961;&lambda;</span>
+      <span>CAIC <strong>ANFIS</strong> Tests</span>
+    </a>
+    <nav class="navegacion">
+      <a href="/constructor" class="{{ 'activo' if seccion == 'constructor' }}">Experimento</a>
+      <a href="/trabajos" class="{{ 'activo' if seccion == 'trabajos' }}">Trabajos</a>
+      <a href="/historial" class="{{ 'activo' if seccion == 'historial' }}">Historial</a>
+      <a href="/datasets" class="{{ 'activo' if seccion == 'datasets' }}">Datasets</a>
+      <a href="/optimizadores" class="{{ 'activo' if seccion == 'optimizadores' }}">Optimizadores</a>
+      <a href="/politicas" class="{{ 'activo' if seccion == 'politicas' }}">Políticas</a>
+    </nav>
+    <nav class="navegacionder">
+    <button id="modo-base",aria-label="Modo">Modo Claro</button>
+    </nav>
+  </header>
+
+  <main class="contenido">
+    {% block contenido %}{% endblock %}
+  </main>
+
+  <footer class="pie">
+    <span id="estado-servidor" class="etiqueta-estado">comprobando…</span>
+  </footer>
+
+  <script src="{{ estatico('js/api.js') }}"></script>
+  <script src="{{ estatico('js/cargando.js') }}"></script>
+  <script>
+    ClienteAPI.obtener("/api/salud").then(function (s) {
+      var el = document.getElementById("estado-servidor");
+      el.textContent = "torch " + s.torch + " · Python " + s.python + " · " +
+        s.dispositivos.filter(function (d) { return d.disponible && d.compatible; })
+                      .map(function (d) { return d.id; }).join(", ");
+      el.classList.add("ok");
+    }).catch(function () {
+      document.getElementById("estado-servidor").textContent = "sin conexión con el servidor";
+    });
+
+    
+
+    const modoBtn = document.getElementById("modo-base");
+    const root = document.documentElement;
+
+    const modo = localStorage.getItem("modo-color");
+    const modo_defecto = window.matchMedia('(modo-preferido-color: claro)').matches;
+
+    const modo_inicial= modo || (modo_defecto ? 'claro':'oscuro');
+
+    root.setAttribute("modo-color",modo_inicial);
+    updateBtnModo(modo_inicial);
+
+    modoBtn.addEventListener('click',()=>
+    {
+      const modoActual = root.getAttribute('modo-color');
+      const modoNuevo = modoActual === 'oscuro' ? 'claro':'oscuro';
+
+      root.setAttribute('modo-color',modoNuevo);
+      localStorage.setItem("modo-color",modoNuevo);
+      updateBtnModo(modoNuevo);
+    });
+
+    function updateBtnModo(modo){
+      modoBtn.textContent = modo === "oscuro" ? "Modo Claro":"Modo Oscuro";
+    }
+
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

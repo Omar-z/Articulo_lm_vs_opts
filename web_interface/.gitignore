@@ -1,0 +1,5 @@
+# Artefactos generados en tiempo de ejecución por la interfaz web.
+# El .gitignore de la raíz cubre *.json y *.fis, pero no *.png ni *.csv aquí dentro.
+data/
+__pycache__/
+*.pyc
